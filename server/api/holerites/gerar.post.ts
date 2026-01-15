@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
     // Buscar funcionários ativos
     let query = supabase
       .from('funcionarios')
-      .select('id, nome_completo, salario_base, empresa_id, cargo_id, departamento_id, numero_dependentes')
+      .select('id, nome_completo, salario_base, empresa_id, cargo_id, departamento_id, numero_dependentes, beneficios, descontos_personalizados')
       .eq('status', 'ativo')
 
     if (funcionario_ids && funcionario_ids.length > 0) {
@@ -130,16 +130,16 @@ export default defineEventHandler(async (event) => {
         let faixaIRRF = 'Isento'
         
         // ========================================
-        // REGRA 1: ISENÇÃO REAL até R$ 2.428,80 (Receita Federal 2026)
+        // REGRA 1: ISENÇÃO CLT até R$ 5.000,00 (Base IRRF)
         // ========================================
-        if (baseIRRF <= 2428.80) {
+        if (baseIRRF <= 5000.00) {
           irrf = 0
           aliquotaIRRF = 0
-          faixaIRRF = 'Isento (até R$ 2.428,80)'
-          console.log(`   ✅ ISENTO - Base IRRF: R$ ${baseIRRF.toFixed(2)} ≤ R$ 2.428,80`)
+          faixaIRRF = 'Isento CLT (até R$ 5.000,00)'
+          console.log(`   ✅ ISENTO CLT - Base IRRF: R$ ${baseIRRF.toFixed(2)} ≤ R$ 5.000,00`)
         }
         // ========================================
-        // REGRA 2: FAIXA DE TRANSIÇÃO COM REDUTOR (R$ 2.428,81 a R$ 7.350,00)
+        // REGRA 2: FAIXA DE TRANSIÇÃO COM REDUTOR (R$ 5.000,01 a R$ 7.350,00)
         // ========================================
         else if (baseIRRF <= 7350.00) {
           // Calcular IR pela tabela progressiva normal
@@ -163,8 +163,8 @@ export default defineEventHandler(async (event) => {
             aliquotaTabelaNominal = 27.5
           }
           
-          // Aplicar redutor progressivo baseado na isenção real
-          const fatorReducao = (baseIRRF - 2428.80) / (7350.00 - 2428.80)
+          // Aplicar redutor progressivo baseado na isenção CLT
+          const fatorReducao = (baseIRRF - 5000.00) / (7350.00 - 5000.00)
           irrf = irrfTabela * fatorReducao
           aliquotaIRRF = baseIRRF > 0 ? (irrf / baseIRRF) * 100 : 0
           faixaIRRF = `Transição c/ Redutor (${(fatorReducao * 100).toFixed(1)}% do IR ${aliquotaTabelaNominal}%)`
@@ -208,9 +208,133 @@ export default defineEventHandler(async (event) => {
         irrf = Math.max(0, Math.round(irrf * 100) / 100)
         aliquotaIRRF = Math.round(aliquotaIRRF * 100) / 100
         
-        // Calcular totais
-        const totalDescontos = inss + irrf
-        const salarioLiquido = salarioBase - totalDescontos
+        // ========================================
+        // CÁLCULO DE BENEFÍCIOS E DESCONTOS
+        // ========================================
+        let totalBeneficios = 0
+        let totalDescontosPersonalizados = 0
+        let detalheBeneficios = []
+        let detalheDescontos = []
+        
+        const funcionario = func as any
+        
+        // Processar benefícios
+        if (funcionario.beneficios) {
+          console.log(`   🎁 Processando benefícios para ${funcionario.nome_completo}`)
+          
+          // Vale Transporte
+          if (funcionario.beneficios.vale_transporte?.ativo) {
+            const vt = funcionario.beneficios.vale_transporte
+            const valorMensal = vt.valor_mensal || (vt.valor || 0) * 22
+            totalBeneficios += valorMensal
+            
+            let desconto = 0
+            if (vt.tipo_desconto === 'percentual') {
+              desconto = salarioBase * (vt.percentual_desconto || 0) / 100
+            } else if (vt.tipo_desconto === 'valor_fixo') {
+              desconto = vt.valor_desconto || 0
+            }
+            
+            detalheBeneficios.push({
+              tipo: 'Vale Transporte',
+              valor: valorMensal,
+              desconto: desconto
+            })
+            
+            totalDescontosPersonalizados += desconto
+            console.log(`      🚌 Vale Transporte: +R$ ${valorMensal.toFixed(2)} / -R$ ${desconto.toFixed(2)}`)
+          }
+          
+          // Vale Refeição
+          if (funcionario.beneficios.vale_refeicao?.ativo) {
+            const vr = funcionario.beneficios.vale_refeicao
+            const valorMensal = vr.valor_mensal || (vr.valor || 0) * 22
+            totalBeneficios += valorMensal
+            
+            let desconto = 0
+            if (vr.tipo_desconto === 'percentual') {
+              desconto = salarioBase * (vr.percentual_desconto || 0) / 100
+            } else if (vr.tipo_desconto === 'valor_fixo') {
+              desconto = vr.valor_desconto || 0
+            }
+            
+            detalheBeneficios.push({
+              tipo: 'Vale Refeição',
+              valor: valorMensal,
+              desconto: desconto
+            })
+            
+            totalDescontosPersonalizados += desconto
+            console.log(`      🍽️ Vale Refeição: +R$ ${valorMensal.toFixed(2)} / -R$ ${desconto.toFixed(2)}`)
+          }
+          
+          // Plano de Saúde
+          if (funcionario.beneficios.plano_saude?.ativo) {
+            const ps = funcionario.beneficios.plano_saude
+            const valorEmpresa = ps.valor_empresa || 0
+            const descontoFuncionario = ps.valor_funcionario || 0
+            
+            totalBeneficios += valorEmpresa
+            totalDescontosPersonalizados += descontoFuncionario
+            
+            detalheBeneficios.push({
+              tipo: 'Plano de Saúde',
+              valor: valorEmpresa,
+              desconto: descontoFuncionario
+            })
+            
+            console.log(`      🏥 Plano de Saúde: +R$ ${valorEmpresa.toFixed(2)} / -R$ ${descontoFuncionario.toFixed(2)}`)
+          }
+          
+          // Plano Odontológico
+          if (funcionario.beneficios.plano_odonto?.ativo) {
+            const po = funcionario.beneficios.plano_odonto
+            const descontoFuncionario = po.valor_funcionario || 0
+            
+            totalDescontosPersonalizados += descontoFuncionario
+            
+            detalheDescontos.push({
+              tipo: 'Plano Odontológico',
+              valor: descontoFuncionario
+            })
+            
+            console.log(`      🦷 Plano Odontológico: -R$ ${descontoFuncionario.toFixed(2)}`)
+          }
+        }
+        
+        // Processar descontos personalizados
+        if (funcionario.descontos_personalizados && Array.isArray(funcionario.descontos_personalizados)) {
+          console.log(`   📉 Processando descontos personalizados`)
+          
+          funcionario.descontos_personalizados.forEach((desconto: any) => {
+            let valorDesconto = 0
+            
+            if (desconto.tipo === 'percentual') {
+              valorDesconto = salarioBase * (desconto.percentual || 0) / 100
+            } else if (desconto.tipo === 'valor_fixo') {
+              valorDesconto = desconto.valor || 0
+            }
+            
+            if (valorDesconto > 0) {
+              totalDescontosPersonalizados += valorDesconto
+              
+              detalheDescontos.push({
+                tipo: desconto.descricao || 'Desconto',
+                valor: valorDesconto
+              })
+              
+              console.log(`      📉 ${desconto.descricao}: -R$ ${valorDesconto.toFixed(2)}`)
+            }
+          })
+        }
+        
+        console.log(`   💰 Total Benefícios: R$ ${totalBeneficios.toFixed(2)}`)
+        console.log(`   📉 Total Descontos Personalizados: R$ ${totalDescontosPersonalizados.toFixed(2)}`)
+        
+        // Calcular totais finais
+        const totalProventos = salarioBase + totalBeneficios
+        const totalDescontos = inss + irrf + totalDescontosPersonalizados
+        const salarioLiquido = totalProventos - totalDescontos
 
         // Criar holerite
         const { data: holerite, error: holeriteError } = await supabase
@@ -228,9 +352,11 @@ export default defineEventHandler(async (event) => {
             base_irrf: baseIRRF,
             aliquota_irrf: aliquotaIRRF,
             faixa_irrf: faixaIRRF,
-            total_proventos: salarioBase,
+            total_proventos: totalProventos,
             total_descontos: totalDescontos,
             salario_liquido: salarioLiquido,
+            beneficios: detalheBeneficios,
+            descontos_personalizados: detalheDescontos,
             status: 'gerado',
             observacoes: 'Holerite gerado automaticamente pelo sistema'
           } as any)
@@ -240,7 +366,12 @@ export default defineEventHandler(async (event) => {
         if (holeriteError) throw holeriteError
 
         console.log(`✅ Holerite criado com sucesso para ${(func as any).nome_completo}`)
-        console.log(`   Salário: R$ ${salarioBase.toFixed(2)} | INSS: R$ ${inss.toFixed(2)} | IRRF: R$ ${irrf.toFixed(2)} | Líquido: R$ ${salarioLiquido.toFixed(2)}`)
+        console.log(`   💰 Salário Base: R$ ${salarioBase.toFixed(2)}`)
+        console.log(`   🎁 Benefícios: R$ ${totalBeneficios.toFixed(2)}`)
+        console.log(`   📊 Total Proventos: R$ ${totalProventos.toFixed(2)}`)
+        console.log(`   📉 INSS: R$ ${inss.toFixed(2)} | IRRF: R$ ${irrf.toFixed(2)} | Outros: R$ ${totalDescontosPersonalizados.toFixed(2)}`)
+        console.log(`   📊 Total Descontos: R$ ${totalDescontos.toFixed(2)}`)
+        console.log(`   💵 Salário Líquido: R$ ${salarioLiquido.toFixed(2)}`)
 
         holeritesCriados.push({
           funcionario: (func as any).nome_completo,

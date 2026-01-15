@@ -46,14 +46,14 @@ function calcularIRRF2026(salarioBruto, numeroDependentes = 0) {
   let irrf = 0
   let faixa = ''
   
-  // REGRA 1: ISENÇÃO REAL até R$ 2.428,80 (Receita Federal 2026)
-  if (baseIRRF <= 2428.80) {
+  // REGRA 1: ISENÇÃO CLT até R$ 5.000,00 (Base IRRF)
+  if (baseIRRF <= 5000.00) {
     irrf = 0
-    faixa = 'Isento (até R$ 2.428,80)'
+    faixa = 'Isento CLT (até R$ 5.000,00)'
   }
-  // REGRA 2: FAIXA DE TRANSIÇÃO COM REDUTOR (R$ 2.428,81 a R$ 7.350,00)
-  // Aplicar redutor progressivo baseado na distância da isenção real
-  // Fórmula: f = (base - 2.428,80) / (7.350 - 2.428,80)
+  // REGRA 2: FAIXA DE TRANSIÇÃO COM REDUTOR (R$ 5.000,01 a R$ 7.350,00)
+  // Aplicar redutor progressivo baseado na isenção CLT
+  // Fórmula: f = (base - 5.000) / (7.350 - 5.000)
   // IR_final = IR_tabela × f
   else if (baseIRRF <= 7350.00) {
     // Calcular IR pela tabela progressiva normal
@@ -71,8 +71,8 @@ function calcularIRRF2026(salarioBruto, numeroDependentes = 0) {
       irrfTabela = (baseIRRF * 0.275) - 896.00
     }
     
-    // Aplicar redutor progressivo baseado na isenção real
-    const fatorReducao = (baseIRRF - 2428.80) / (7350.00 - 2428.80)
+    // Aplicar redutor progressivo baseado na isenção CLT
+    const fatorReducao = (baseIRRF - 5000.00) / (7350.00 - 5000.00)
     irrf = irrfTabela * fatorReducao
     faixa = 'Transição c/ Redutor'
   }
@@ -114,15 +114,15 @@ function calcularIRRF2026(salarioBruto, numeroDependentes = 0) {
 // ========================================
 
 const testes = [
-  { nome: 'TESTE 1 - Não mais isento (correção)', bruto: 4500, dependentes: 0, irrfEsperadoMin: 80, irrfEsperadoMax: 85 },
-  { nome: 'TESTE 2 - Acima da isenção real', bruto: 5000, dependentes: 0, irrfEsperadoMin: 140, irrfEsperadoMax: 150 },
-  { nome: 'TESTE 3 - Início da transição', bruto: 5500, dependentes: 0, irrfEsperadoMin: 225, irrfEsperadoMax: 235 },
-  { nome: 'TESTE 4 - Meio da transição', bruto: 6200, dependentes: 0, irrfEsperadoMin: 385, irrfEsperadoMax: 395 },
-  { nome: 'TESTE 5 - Transição avançada', bruto: 7000, dependentes: 0, irrfEsperadoMin: 615, irrfEsperadoMax: 625 },
-  { nome: 'TESTE 6 - Limite da transição', bruto: 7350, dependentes: 0, irrfEsperadoMin: 735, irrfEsperadoMax: 745 },
-  { nome: 'TESTE 7 - Caso REAL (CRÍTICO)', bruto: 8000, dependentes: 0, irrfEsperadoMin: 995, irrfEsperadoMax: 1005 },
+  { nome: 'TESTE 1 - Isenção CLT', bruto: 4500, dependentes: 0, irrfEsperado: 0 },
+  { nome: 'TESTE 2 - Limite da isenção CLT', bruto: 5000, dependentes: 0, irrfEsperado: 0 },
+  { nome: 'TESTE 3 - Ainda isento CLT', bruto: 5500, dependentes: 0, irrfEsperado: 0 },
+  { nome: 'TESTE 4 - Início da transição', bruto: 6200, dependentes: 0, irrfEsperadoMin: 130, irrfEsperadoMax: 140 },
+  { nome: 'TESTE 5 - Meio da transição', bruto: 7000, dependentes: 0, irrfEsperadoMin: 410, irrfEsperadoMax: 420 },
+  { nome: 'TESTE 6 - Limite da transição', bruto: 7350, dependentes: 0, irrfEsperadoMin: 565, irrfEsperadoMax: 575 },
+  { nome: 'TESTE 7 - Caso REAL (CRÍTICO)', bruto: 8000, dependentes: 0, irrfEsperadoMin: 935, irrfEsperadoMax: 945 },
   { nome: 'TESTE 8 - Acima da regra', bruto: 9000, dependentes: 0, irrfEsperadoMin: 1320, irrfEsperadoMax: 1335 },
-  { nome: 'TESTE 9 - Com dependentes', bruto: 6200, dependentes: 2, irrfEsperadoMin: 280, irrfEsperadoMax: 290 },
+  { nome: 'TESTE 9 - Com dependentes', bruto: 6200, dependentes: 2, irrfEsperadoMin: 25, irrfEsperadoMax: 35 },
 ]
 
 let testesPassaram = 0
