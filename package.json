@@ -1,5 +1,7 @@
 {
-  "name": "nuxt-app",
+  "name": "rh-qualitec",
+  "version": "1.0.0",
+  "description": "Sistema de RH para gestão de colaboradores da Qualitec",
   "type": "module",
   "private": true,
   "scripts": {
@@ -7,7 +9,9 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "vercel-build": "nuxt build",
+    "start": "node .output/server/index.mjs"
   },
   "dependencies": {
     "@nuxtjs/supabase": "^2.0.3",
@@ -18,5 +22,8 @@
     "pdfkit": "^0.17.2",
     "vue": "^3.5.26",
     "vue-router": "^4.6.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
