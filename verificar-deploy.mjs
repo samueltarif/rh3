@@ -3,12 +3,12 @@
 // ========================================
 // Script para verificar se o deploy está funcionando
 
+import fs from 'fs'
+import path from 'path'
+
 console.log('🔍 VERIFICANDO CONFIGURAÇÃO PARA DEPLOY NO VERCEL\n')
 
 // 1. Verificar arquivos necessários
-const fs = require('fs')
-const path = require('path')
-
 const arquivosNecessarios = [
   'vercel.json',
   'nuxt.config.ts',
