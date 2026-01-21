@@ -1,35 +1,12 @@
-# Arquivos de desenvolvimento
-*.mjs
-testar-*.mjs
-verificar-*.mjs
-debug-*.mjs
-executar-*.mjs
-test-*.js
-*.test.js
-*.spec.js
-
-# Arquivos de configuração local
+node_modules
+.nuxt
+.output
+.git
 .env
-.env.local
-.env.development
-
-# Logs
 *.log
-logs/
-
-# Cache
-.nuxt/
-.output/
-node_modules/
-
-# Arquivos de banco de dados locais
-database/*.sql
-database/*.md
-!database/README.md
-
-# Documentação de desenvolvimento
-docs/CORRECAO-*.md
-docs/TROUBLESHOOTING-*.md
-
-# Scripts de teste
-limpar-cache.bat
+database
+docs
+*.mjs
+*.js
+!nuxt.config.ts
+!package.json
