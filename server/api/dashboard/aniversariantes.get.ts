@@ -17,11 +17,11 @@ export default defineEventHandler(async (event) => {
       .from('funcionarios')
       .select(`
         id,
-        nome,
+        nome_completo,
         data_nascimento,
         avatar
       `)
-      .eq('ativo', true)
+      .eq('status', 'ativo')
       .not('data_nascimento', 'is', null)
     
     if (error) {

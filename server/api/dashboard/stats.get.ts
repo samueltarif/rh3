@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     const { data: funcionarios, error: errorFuncionarios } = await supabase
       .from('funcionarios')
       .select('id', { count: 'exact' })
-      .eq('ativo', true)
+      .eq('status', 'ativo')
     
     if (errorFuncionarios) {
       console.error('[STATS] Erro ao buscar funcionários:', errorFuncionarios)

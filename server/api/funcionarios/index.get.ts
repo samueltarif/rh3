@@ -26,8 +26,8 @@ export default defineEventHandler(async (event) => {
           nome
         )
       `)
-      .eq('ativo', true)
-      .order('nome')
+      .eq('status', 'ativo')
+      .order('nome_completo')
     
     if (error) {
       console.error('[FUNCIONARIOS] Erro na query:', error)

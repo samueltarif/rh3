@@ -1,5 +1,7 @@
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async () => {
   try {
+    console.log('[HEALTH] Iniciando health check...')
+    
     const config = useRuntimeConfig()
     
     // Verificar variáveis de ambiente (sem expor valores)
@@ -12,21 +14,46 @@ export default defineEventHandler(async (event) => {
       timestamp: new Date().toISOString()
     }
     
-    return {
+    console.log('[HEALTH] Variáveis verificadas:', envCheck)
+    
+    // Verificar variáveis específicas
+    const detailedCheck = {
+      NUXT_PUBLIC_SUPABASE_URL: !!process.env.NUXT_PUBLIC_SUPABASE_URL,
+      NUXT_PUBLIC_SUPABASE_KEY: !!process.env.NUXT_PUBLIC_SUPABASE_KEY,
+      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      NUXT_SECRET_KEY: !!process.env.NUXT_SECRET_KEY,
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL_ENV: process.env.VERCEL_ENV
+    }
+    
+    console.log('[HEALTH] Verificação detalhada:', detailedCheck)
+    
+    const result = {
       status: 'ok',
       message: 'Health check passed',
       environment: envCheck,
+      detailed: detailedCheck,
       vercel: {
         region: process.env.VERCEL_REGION || 'unknown',
-        env: process.env.VERCEL_ENV || 'unknown'
+        env: process.env.VERCEL_ENV || 'unknown',
+        url: process.env.VERCEL_URL || 'unknown'
       }
     }
+    
+    console.log('[HEALTH] Health check concluído com sucesso')
+    
+    return result
+    
   } catch (error: any) {
-    console.error('Health check failed:', error)
-    return {
-      status: 'error',
+    console.error('[HEALTH] Erro no health check:', {
       message: error.message,
       stack: error.stack
-    }
+    })
+    
+    throw createError({
+      statusCode: 500,
+      statusMessage: `Health check failed: ${error.message}`
+    })
   }
 })
