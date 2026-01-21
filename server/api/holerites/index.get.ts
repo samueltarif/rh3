@@ -14,11 +14,11 @@ export default defineEventHandler(async (event) => {
         *,
         funcionarios!inner (
           id,
-          nome,
+          nome_completo,
           cpf
         )
       `)
-      .order('data_geracao', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(50)
     
     if (error) {

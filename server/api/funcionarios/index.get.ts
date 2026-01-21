@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
           nome
         )
       `)
-      .eq('status', 'ativo')
+      .eq('ativo', true)
       .order('nome_completo')
     
     if (error) {

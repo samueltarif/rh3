@@ -29,8 +29,8 @@ export default defineEventHandler(async (event) => {
     const { data: holerites, error: errorHolerites } = await supabase
       .from('holerites')
       .select('id', { count: 'exact' })
-      .gte('data_geracao', inicioMes.toISOString())
-      .lte('data_geracao', fimMes.toISOString())
+      .gte('created_at', inicioMes.toISOString())
+      .lte('created_at', fimMes.toISOString())
     
     if (errorHolerites) {
       console.error('[STATS] Erro ao buscar holerites:', errorHolerites)
