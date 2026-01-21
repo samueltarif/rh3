@@ -2,42 +2,68 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
   try {
+    console.log('[ANIVERSARIANTES] Iniciando busca...')
+    
     const supabase = serverSupabaseServiceRole(event)
-
-    // Buscar funcionários com data de nascimento
-    const { data: funcionarios, error } = await supabase
+    
+    console.log('[ANIVERSARIANTES] Cliente Supabase criado')
+    
+    const hoje = new Date()
+    const mesAtual = hoje.getMonth() + 1 // getMonth() retorna 0-11
+    
+    console.log('[ANIVERSARIANTES] Buscando aniversariantes do mês:', mesAtual)
+    
+    const { data: aniversariantes, error } = await supabase
       .from('funcionarios')
       .select(`
         id,
-        nome_completo,
+        nome,
         data_nascimento,
-        cargo:cargos(nome),
-        departamento:departamentos(nome)
+        avatar
       `)
+      .eq('ativo', true)
       .not('data_nascimento', 'is', null)
-
-    if (error) throw error
-
+    
+    if (error) {
+      console.error('[ANIVERSARIANTES] Erro na query:', error)
+      throw error
+    }
+    
+    console.log('[ANIVERSARIANTES] Funcionários encontrados:', aniversariantes?.length || 0)
+    
     // Filtrar aniversariantes do mês atual
-    const mesAtual = new Date().getMonth() + 1
-    const aniversariantes = funcionarios?.filter((f: any) => {
-      const mesNascimento = new Date(f.data_nascimento).getMonth() + 1
+    const aniversariantesMes = aniversariantes?.filter(funcionario => {
+      if (!funcionario.data_nascimento) return false
+      
+      const dataNascimento = new Date(funcionario.data_nascimento)
+      const mesNascimento = dataNascimento.getMonth() + 1
+      
       return mesNascimento === mesAtual
-    }).map((f: any) => ({
-      id: f.id,
-      nome_completo: f.nome_completo,
-      data_nascimento: f.data_nascimento,
-      cargo: f.cargo?.nome || 'Não definido',
-      departamento: f.departamento?.nome || 'Não definido',
-      dia: new Date(f.data_nascimento).getDate()
-    })).sort((a: any, b: any) => a.dia - b.dia) || []
-
-    return aniversariantes
+    }) || []
+    
+    console.log('[ANIVERSARIANTES] Aniversariantes do mês:', aniversariantesMes.length)
+    
+    // Ordenar por dia do aniversário
+    aniversariantesMes.sort((a, b) => {
+      const diaA = new Date(a.data_nascimento).getDate()
+      const diaB = new Date(b.data_nascimento).getDate()
+      return diaA - diaB
+    })
+    
+    return aniversariantesMes
+    
   } catch (error: any) {
-    console.error('Erro ao buscar aniversariantes:', error)
+    console.error('[ANIVERSARIANTES] Erro completo:', {
+      message: error.message,
+      stack: error.stack,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    })
+    
     throw createError({
       statusCode: 500,
-      message: 'Erro ao buscar aniversariantes'
+      statusMessage: `Erro ao buscar aniversariantes: ${error.message}`
     })
   }
 })
