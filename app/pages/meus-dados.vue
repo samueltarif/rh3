@@ -37,7 +37,7 @@
           </p>
           <div class="flex flex-wrap gap-3">
             <UiBadge variant="success">✓ Funcionário Ativo</UiBadge>
-            <UiBadge variant="info">📅 Desde Jan/2023</UiBadge>
+            <UiBadge variant="info">📅 {{ formatarDataContratacao() }}</UiBadge>
           </div>
         </div>
       </div>
@@ -528,6 +528,33 @@ const formatarData = (data: string) => {
   if (!data) return '--'
   const date = new Date(data)
   return date.toLocaleDateString('pt-BR')
+}
+
+// Função para formatar data de contratação no formato "Desde Mês/Ano"
+const formatarDataContratacao = () => {
+  if (!dadosProfissionais.value.dataAdmissao) return 'Desde --/--'
+  
+  try {
+    const data = new Date(dadosProfissionais.value.dataAdmissao + 'T00:00:00') // Adicionar horário para evitar problemas de timezone
+    
+    // Verificar se a data é válida
+    if (isNaN(data.getTime())) {
+      return 'Desde --/--'
+    }
+    
+    const meses = [
+      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+    ]
+    
+    const mes = meses[data.getMonth()]
+    const ano = data.getFullYear()
+    
+    return `Desde ${mes}/${ano}`
+  } catch (error) {
+    console.error('Erro ao formatar data de contratação:', error)
+    return 'Desde --/--'
+  }
 }
 
 // Função para formatar moeda
