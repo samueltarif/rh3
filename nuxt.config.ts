@@ -5,14 +5,10 @@ export default defineNuxtConfig({
   
   nitro: {
     preset: 'vercel',
-    // SOLUÇÃO DEFINITIVA: Forçar bundle único sem chunks
-    rollupConfig: {
-      output: {
-        manualChunks: () => 'index',  // Força TUDO em um único chunk
-        inlineDynamicImports: true    // Inline todos os imports dinâmicos
-      }
+    // TESTE MÍNIMO: Apenas externals inline
+    externals: {
+      inline: ['vue', '@vue/shared', '@vue/server-renderer']
     },
-    // Configuração específica para Vercel
     vercel: {
       functions: {
         maxDuration: 30
