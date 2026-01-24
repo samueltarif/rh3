@@ -5,10 +5,15 @@ export default defineEventHandler(async (event) => {
     console.log('[FUNCIONARIOS] Iniciando busca de funcionários...')
     
     const supabase = serverSupabaseServiceRole(event)
+    const query = getQuery(event)
+    const empresaId = query.empresa
+    const departamentoId = query.departamento
+    const cargoId = query.cargo
     
     console.log('[FUNCIONARIOS] Cliente Supabase criado')
+    console.log('[FUNCIONARIOS] Filtros:', { empresaId, departamentoId, cargoId })
     
-    const { data: funcionarios, error } = await supabase
+    let queryBuilder = supabase
       .from('funcionarios')
       .select(`
         *,
@@ -27,7 +32,21 @@ export default defineEventHandler(async (event) => {
         )
       `)
       .eq('status', 'ativo')
-      .order('nome_completo')
+    
+    // Aplicar filtros se fornecidos
+    if (empresaId) {
+      queryBuilder = queryBuilder.eq('empresa_id', empresaId)
+    }
+    
+    if (departamentoId) {
+      queryBuilder = queryBuilder.eq('departamento_id', departamentoId)
+    }
+    
+    if (cargoId) {
+      queryBuilder = queryBuilder.eq('cargo_id', cargoId)
+    }
+    
+    const { data: funcionarios, error } = await queryBuilder.order('nome_completo')
     
     if (error) {
       console.error('[FUNCIONARIOS] Erro na query:', error)

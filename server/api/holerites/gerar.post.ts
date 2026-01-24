@@ -358,8 +358,10 @@ export default defineEventHandler(async (event) => {
             beneficios: [],
             descontos_personalizados: [],
             
+            // ADIANTAMENTOS são criados com status "gerado" inicialmente
+            // Serão disponibilizados automaticamente no dia 17 do mês
             status: 'gerado',
-            observacoes: `Adiantamento salarial (40%) - Salário base: R$ ${salarioBase.toFixed(2)}`
+            observacoes: `Adiantamento salarial (40%) - Salário base: R$ ${salarioBase.toFixed(2)} - Será disponibilizado automaticamente no dia 17`
           }
 
           const { data: holerite, error: holeriteError } = await supabase

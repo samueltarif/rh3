@@ -2,9 +2,31 @@
   <div>
     <!-- Cabeçalho da Página -->
     <div class="mb-8">
-      <h1 class="text-3xl lg:text-4xl font-bold text-gray-800">
-        {{ obterSaudacao() }} {{ user?.nome?.split(' ')[0] }}!
-      </h1>
+      <div class="flex items-center gap-3">
+        <h1 class="text-3xl lg:text-4xl font-bold text-gray-800">
+          {{ obterSaudacao() }} {{ user?.nome?.split(' ')[0] }}!
+        </h1>
+        
+        <!-- Ícone de Aniversariante na mesma linha da saudação -->
+        <UiAniversariantesTooltip 
+          v-if="temAniversarianteMes"
+          :aniversariantes="aniversariantes"
+        >
+          <div 
+            class="relative p-2 rounded-lg bg-yellow-50 border border-yellow-200 hover:bg-yellow-100 transition-colors cursor-pointer"
+            :title="`${totalAniversariantes} aniversariante(s) este mês`"
+          >
+            <span class="text-2xl">🎂</span>
+            <span 
+              v-if="totalAniversariantes > 0"
+              class="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium"
+            >
+              {{ totalAniversariantes > 9 ? '9+' : totalAniversariantes }}
+            </span>
+          </div>
+        </UiAniversariantesTooltip>
+      </div>
+      
       <p class="text-lg text-gray-500 mt-2">
         Bem-vindo ao Sistema de RH. Aqui você encontra tudo sobre sua vida profissional.
       </p>
@@ -116,34 +138,46 @@
         </div>
       </div>
 
-      <!-- Aniversariantes -->
-      <UiCard title="🎂 Aniversariantes do Mês">
-        <div v-if="loading" class="text-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p class="mt-2 text-gray-600">Carregando...</p>
-        </div>
+      <!-- Painel de Notificações e Aniversariantes -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Painel de Notificações -->
+        <NotificacoesPainel />
         
-        <div v-else-if="aniversariantes.length === 0" class="text-center py-8 text-gray-500">
-          Nenhum aniversariante este mês
-        </div>
-        
-        <div v-else class="space-y-4">
-          <div 
-            v-for="aniversariante in aniversariantes" 
-            :key="aniversariante.id"
-            class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
-          >
-            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-              <span class="text-orange-600 font-bold text-lg">{{ aniversariante.dia }}</span>
-            </div>
-            <div class="flex-1">
-              <h4 class="font-semibold text-gray-900">{{ aniversariante.nome_completo }}</h4>
-              <p class="text-sm text-gray-600">{{ aniversariante.cargo }} - {{ aniversariante.departamento }}</p>
-            </div>
-            <div class="text-2xl">🎂</div>
+        <!-- Aniversariantes -->
+        <UiCard title="🎂 Aniversariantes do Mês">
+          <div v-if="loading" class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="mt-2 text-gray-600">Carregando...</p>
           </div>
-        </div>
-      </UiCard>
+          
+          <div v-else-if="aniversariantes.length === 0" class="text-center py-8 text-gray-500">
+            Nenhum aniversariante este mês
+          </div>
+          
+          <div v-else class="space-y-4">
+            <div 
+              v-for="aniversariante in aniversariantes" 
+              :key="aniversariante.id"
+              class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+            >
+              <!-- Avatar do funcionário -->
+              <UiAvatar 
+                :name="aniversariante.nome_completo" 
+                :avatar-type="aniversariante.avatar"
+                size="md"
+                color="orange"
+              />
+              
+              <div class="flex-1">
+                <h4 class="font-semibold text-gray-900">{{ aniversariante.nome_completo }}</h4>
+                <p class="text-sm text-gray-600">{{ aniversariante.cargo }} - {{ aniversariante.departamento }}</p>
+                <p class="text-xs text-gray-500">Aniversário dia {{ aniversariante.dia }}</p>
+              </div>
+              <div class="text-2xl">🎂</div>
+            </div>
+          </div>
+        </UiCard>
+      </div>
     </template>
   </div>
 </template>
@@ -152,6 +186,12 @@
 definePageMeta({ middleware: 'auth' })
 
 const { user, isAdmin } = useAuth()
+const { 
+  aniversariantes,
+  fetchAniversariantes, 
+  temAniversarianteMes, 
+  totalAniversariantes 
+} = useAniversariantes()
 
 // Estados
 const stats = ref({
@@ -161,7 +201,6 @@ const stats = ref({
   totalAniversariantes: 0
 })
 
-const aniversariantes = ref<any[]>([])
 const loading = ref(true)
 const dadosCompletos = ref<any>(null)
 const empresaUsuario = ref<any>(null)
@@ -170,16 +209,14 @@ const empresaUsuario = ref<any>(null)
 const cargosMap = ref<Record<string, string>>({})
 const departamentosMap = ref<Record<string, string>>({})
 
-// Função para obter saudação baseada no horário de Brasília/SP
+// Função para obter saudação baseada no horário local
 const obterSaudacao = () => {
   const agora = new Date()
-  // Converter para horário de Brasília (UTC-3)
-  const horarioBrasilia = new Date(agora.getTime() - (3 * 60 * 60 * 1000))
-  const hora = horarioBrasilia.getHours()
+  const hora = agora.getHours()
   
-  if (hora >= 5 && hora < 12) {
+  if (hora >= 0 && hora < 12) {
     return 'Bom dia'
-  } else if (hora >= 12 && hora < 18) {
+  } else if (hora >= 12 && hora <= 18) {
     return 'Boa tarde'
   } else {
     return 'Boa noite'
@@ -228,6 +265,13 @@ const carregarDados = async () => {
     // Carregar mapas de conversão primeiro
     await carregarMapas()
     
+    // Carregar aniversariantes (para todos os usuários)
+    try {
+      await fetchAniversariantes()
+    } catch (error) {
+      console.error('Erro ao carregar aniversariantes:', error)
+    }
+    
     // Buscar dados completos do usuário (incluindo empresa)
     if (user.value?.id) {
       try {
@@ -244,10 +288,7 @@ const carregarDados = async () => {
     // Buscar estatísticas apenas para admin
     if (isAdmin.value) {
       try {
-        const [statsData, aniversariantesData] = await Promise.all([
-          $fetch('/api/dashboard/stats'),
-          $fetch('/api/dashboard/aniversariantes')
-        ])
+        const statsData = await $fetch('/api/dashboard/stats')
 
         // Garantir que os valores sejam números válidos
         stats.value = {
@@ -256,8 +297,6 @@ const carregarDados = async () => {
           folhaMensal: Number(statsData?.folhaMensal) || 0,
           totalAniversariantes: Number(statsData?.totalAniversariantes) || 0
         }
-        
-        aniversariantes.value = Array.isArray(aniversariantesData) ? aniversariantesData : []
       } catch (error) {
         console.error('Erro ao carregar dados do admin:', error)
         // Manter valores padrão em caso de erro
@@ -267,7 +306,6 @@ const carregarDados = async () => {
           folhaMensal: 0,
           totalAniversariantes: 0
         }
-        aniversariantes.value = []
       }
     }
   } catch (error) {

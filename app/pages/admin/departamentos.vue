@@ -38,7 +38,17 @@
           Responsável: {{ dept.responsavel }}
         </div>
         <div class="mt-3 pt-3 border-t border-gray-100">
-          <span class="text-sm text-gray-500">{{ dept.funcionarios }} funcionários</span>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-gray-500">{{ dept.funcionarios_count || 0 }} funcionários</span>
+            <UiButton 
+              v-if="dept.funcionarios_count > 0" 
+              variant="ghost" 
+              size="sm" 
+              @click="verFuncionarios(dept)"
+            >
+              👥 Ver funcionários
+            </UiButton>
+          </div>
         </div>
       </UiCard>
     </div>
@@ -93,7 +103,7 @@ interface Departamento {
   nome: string
   descricao: string
   responsavel: string
-  funcionarios: number
+  funcionarios_count: number
 }
 
 const departamentos = ref<Departamento[]>([])
@@ -115,10 +125,7 @@ const carregarDepartamentos = async () => {
   try {
     const response: any = await $fetch('/api/departamentos')
     if (response.success && response.data) {
-      departamentos.value = response.data.map((d: any) => ({
-        ...d,
-        funcionarios: 0 // TODO: Contar funcionários por departamento
-      }))
+      departamentos.value = response.data
     }
   } catch (error) {
     console.error('Erro ao carregar departamentos:', error)
@@ -170,5 +177,9 @@ const mostrarMensagem = (title: string, message: string, variant: 'success' | 'e
   setTimeout(() => {
     mostrarNotificacao.value = false
   }, 5000)
+}
+
+const verFuncionarios = (departamento: any) => {
+  navigateTo(`/admin/funcionarios?departamento=${departamento.id}`)
 }
 </script>

@@ -22,6 +22,17 @@
               <p v-if="cargo.nivel" class="text-sm text-gray-400 mt-1">
                 Nível: {{ cargo.nivel }}
               </p>
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-sm text-gray-500">{{ cargo.funcionarios_count || 0 }} funcionários</span>
+                <UiButton 
+                  v-if="cargo.funcionarios_count > 0" 
+                  variant="ghost" 
+                  size="sm" 
+                  @click="verFuncionarios(cargo)"
+                >
+                  👥 Ver funcionários
+                </UiButton>
+              </div>
             </div>
           </div>
           <UiButton variant="ghost" @click="abrirModal(cargo)">✏️ Editar</UiButton>
@@ -109,5 +120,9 @@ const salvar = async () => {
   setTimeout(() => {
     mostrarNotificacao.value = false
   }, 3000)
+}
+
+const verFuncionarios = (cargo: any) => {
+  navigateTo(`/admin/funcionarios?cargo=${cargo.id}`)
 }
 </script>

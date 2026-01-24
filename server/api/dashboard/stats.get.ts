@@ -8,10 +8,10 @@ export default defineEventHandler(async (event) => {
     
     console.log('[STATS] Cliente Supabase criado')
     
-    // Buscar total de funcionários
+    // Buscar total de funcionários e soma dos salários
     const { data: funcionarios, error: errorFuncionarios } = await supabase
       .from('funcionarios')
-      .select('id', { count: 'exact' })
+      .select('id, salario_base', { count: 'exact' })
       .eq('status', 'ativo')
     
     if (errorFuncionarios) {
@@ -20,6 +20,14 @@ export default defineEventHandler(async (event) => {
     }
     
     console.log('[STATS] Funcionários encontrados:', funcionarios?.length || 0)
+    
+    // Calcular soma total dos salários
+    const folhaMensal = funcionarios?.reduce((total, funcionario) => {
+      const salario = parseFloat(funcionario.salario_base) || 0
+      return total + salario
+    }, 0) || 0
+    
+    console.log('[STATS] Folha mensal calculada:', folhaMensal)
     
     // Buscar total de holerites do mês atual
     const hoje = new Date()
@@ -65,26 +73,35 @@ export default defineEventHandler(async (event) => {
     
     // Buscar aniversariantes do mês
     const mesAtual = hoje.getMonth() + 1
-    const { data: aniversariantes, error: errorAniversariantes } = await supabase
+    const { data: todosAniversariantes, error: errorAniversariantes } = await supabase
       .from('funcionarios')
-      .select('id')
+      .select('id, data_nascimento')
       .eq('status', 'ativo')
       .not('data_nascimento', 'is', null)
-      .filter('data_nascimento', 'like', `%-${mesAtual.toString().padStart(2, '0')}-%`)
     
     if (errorAniversariantes) {
       console.error('[STATS] Erro ao buscar aniversariantes:', errorAniversariantes)
     }
     
-    console.log('[STATS] Aniversariantes encontrados:', aniversariantes?.length || 0)
+    // Filtrar aniversariantes do mês atual no JavaScript
+    const aniversariantesMes = todosAniversariantes?.filter(funcionario => {
+      if (!funcionario.data_nascimento) return false
+      
+      const dataNascimento = new Date(funcionario.data_nascimento)
+      const mesNascimento = dataNascimento.getMonth() + 1
+      
+      return mesNascimento === mesAtual
+    }) || []
+    
+    console.log('[STATS] Aniversariantes encontrados:', aniversariantesMes.length)
     
     const stats = {
       totalFuncionarios: funcionarios?.length || 0,
       holeritesMes: holerites?.length || 0,
       totalEmpresas: empresas?.length || 0,
       totalDepartamentos: departamentos?.length || 0,
-      totalAniversariantes: aniversariantes?.length || 0,
-      folhaMensal: 0, // Será calculado se necessário
+      totalAniversariantes: aniversariantesMes?.length || 0,
+      folhaMensal: folhaMensal, // Soma total dos salários
       mesAtual: hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     }
     

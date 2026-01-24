@@ -1,27 +1,34 @@
 // API para listar todos os cargos
+import { serverSupabaseServiceRole } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl
-  const serviceRoleKey = config.supabaseServiceRoleKey || config.public.supabaseKey
-
   try {
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/cargos?select=*&order=nome.asc`,
-      {
-        headers: {
-          'apikey': serviceRoleKey,
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
+    const supabase = serverSupabaseServiceRole(event)
 
-    if (!response.ok) {
-      throw new Error('Erro ao buscar cargos')
+    // Buscar cargos com contagem de funcionários
+    const { data: cargos, error } = await supabase
+      .from('cargos')
+      .select(`
+        *,
+        funcionarios_count:funcionarios(count)
+      `)
+      .order('nome', { ascending: true })
+
+    if (error) {
+      console.error('Erro ao buscar cargos:', error)
+      throw error
     }
 
-    const cargos = await response.json()
-    return { success: true, data: cargos }
+    // Transformar os dados para incluir a contagem
+    const cargosComContagem = cargos?.map(cargo => ({
+      ...cargo,
+      funcionarios_count: cargo.funcionarios_count?.[0]?.count || 0
+    })) || []
+
+    return { 
+      success: true, 
+      data: cargosComContagem 
+    }
   } catch (error: any) {
     console.error('Erro ao buscar cargos:', error)
     throw createError({

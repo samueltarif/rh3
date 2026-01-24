@@ -1,30 +1,33 @@
 // API para listar departamentos
+import { serverSupabaseServiceRole } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl
-  const supabaseKey = config.public.supabaseKey
-
   try {
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/departamentos?select=*&order=nome.asc`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
+    const supabase = serverSupabaseServiceRole(event)
 
-    if (!response.ok) {
-      throw new Error('Erro ao buscar departamentos')
+    // Buscar departamentos com contagem de funcionários
+    const { data: departamentos, error } = await supabase
+      .from('departamentos')
+      .select(`
+        *,
+        funcionarios_count:funcionarios(count)
+      `)
+      .order('nome', { ascending: true })
+
+    if (error) {
+      console.error('Erro ao buscar departamentos:', error)
+      throw error
     }
 
-    const departamentos = await response.json()
+    // Transformar os dados para incluir a contagem
+    const departamentosComContagem = departamentos?.map(dept => ({
+      ...dept,
+      funcionarios_count: dept.funcionarios_count?.[0]?.count || 0
+    })) || []
 
     return {
       success: true,
-      data: departamentos
+      data: departamentosComContagem
     }
   } catch (error: any) {
     console.error('Erro ao buscar departamentos:', error)

@@ -300,11 +300,10 @@
           :disabled="!editandoPagamento" 
         />
         
-        <!-- Chave PIX (só aparece se forma de pagamento for PIX) -->
+        <!-- Chave PIX (sempre visível) -->
         <UiInput 
-          v-if="dadosFinanceiros.forma_pagamento === 'pix'"
           v-model="dadosFinanceiros.chave_pix" 
-          label="Chave PIX" 
+          label="Chave PIX (Opcional)" 
           placeholder="Digite sua chave PIX (CPF, email, telefone ou chave aleatória)"
           :disabled="!editandoPagamento" 
         />
@@ -494,15 +493,13 @@ const tipoContaOptions = [
 ]
 
 const sexoOptions = [
-  { value: 'masculino', label: 'Masculino' },
-  { value: 'feminino', label: 'Feminino' },
-  { value: 'outro', label: 'Outro' },
-  { value: 'nao_informar', label: 'Prefiro não informar' }
+  { value: 'M', label: 'Masculino' },
+  { value: 'F', label: 'Feminino' },
+  { value: 'O', label: 'Outro' }
 ]
 
 const formaPagamentoOptions = [
   { value: 'deposito', label: 'Depósito em Conta' },
-  { value: 'pix', label: 'PIX' },
   { value: 'dinheiro', label: 'Dinheiro' }
 ]
 
@@ -697,6 +694,24 @@ const carregarOpcoes = async () => {
   }
 }
 
+// Função para converter valores antigos de sexo para o formato atual
+const converterSexoParaFormato = (sexo: string) => {
+  if (!sexo) return ''
+  
+  // Se já está no formato correto (M, F, O), retorna como está
+  if (['M', 'F', 'O'].includes(sexo)) {
+    return sexo
+  }
+  
+  // Converter valores antigos
+  const sexoLower = sexo.toLowerCase()
+  if (sexoLower === 'masculino' || sexoLower === 'm') return 'M'
+  if (sexoLower === 'feminino' || sexoLower === 'f') return 'F'
+  if (sexoLower === 'outro' || sexoLower === 'o' || sexoLower === 'nao_informar') return 'O'
+  
+  return ''
+}
+
 // Função para carregar dados do banco
 const carregarDados = async () => {
   if (!user.value?.id) {
@@ -717,7 +732,7 @@ const carregarDados = async () => {
         cpf: response.data.cpf || '',
         rg: response.data.rg || '',
         dataNascimento: response.data.data_nascimento || '',
-        sexo: response.data.sexo || '',
+        sexo: converterSexoParaFormato(response.data.sexo) || '',
         telefone: response.data.telefone || '',
         email_pessoal: response.data.email_pessoal || '',
         pis_pasep: response.data.pis_pasep || ''

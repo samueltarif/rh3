@@ -1,6 +1,22 @@
 <template>
   <div>
     <UiPageHeader title="Funcionários" description="Gerencie todos os colaboradores da empresa">
+      <template v-if="empresaFiltrada || departamentoFiltrado || cargoFiltrado">
+        <div class="flex items-center gap-3 mb-4 flex-wrap">
+          <UiBadge v-if="empresaFiltrada" variant="info" class="text-sm">
+            Empresa: {{ empresaFiltrada.nome }}
+          </UiBadge>
+          <UiBadge v-if="departamentoFiltrado" variant="success" class="text-sm">
+            Departamento: {{ departamentoFiltrado.nome }}
+          </UiBadge>
+          <UiBadge v-if="cargoFiltrado" variant="warning" class="text-sm">
+            Cargo: {{ cargoFiltrado.nome }}
+          </UiBadge>
+          <UiButton variant="ghost" size="sm" @click="limparFiltro">
+            ✕ Ver todos
+          </UiButton>
+        </div>
+      </template>
       <UiButton size="lg" icon="➕" @click="abrirModal()">
         Novo Funcionário
       </UiButton>
@@ -130,6 +146,7 @@ const form = ref({
   conta: '',
   tipo_conta: '',
   forma_pagamento: 'deposito',
+  chave_pix: '',
   
   // Benefícios
   beneficios: {
@@ -172,11 +189,68 @@ const form = ref({
 })
 
 const funcionarios = ref<any[]>([])
+const empresaFiltrada = ref<any>(null)
+const departamentoFiltrado = ref<any>(null)
+const cargoFiltrado = ref<any>(null)
 
 // Carregar funcionários do banco
 const carregarFuncionarios = async () => {
   try {
-    const data = await $fetch('/api/funcionarios')
+    // Verificar se há filtros na URL
+    const route = useRoute()
+    const empresaId = route.query.empresa
+    const departamentoId = route.query.departamento
+    const cargoId = route.query.cargo
+    
+    let url = '/api/funcionarios'
+    const params = []
+    
+    if (empresaId) {
+      params.push(`empresa=${empresaId}`)
+      // Buscar dados da empresa para mostrar no filtro
+      try {
+        const response = await $fetch(`/api/empresas/${empresaId}`)
+        empresaFiltrada.value = response.data
+      } catch (error) {
+        console.warn('Erro ao buscar dados da empresa:', error)
+      }
+    } else {
+      empresaFiltrada.value = null
+    }
+    
+    if (departamentoId) {
+      params.push(`departamento=${departamentoId}`)
+      // Buscar dados do departamento para mostrar no filtro
+      try {
+        const response = await $fetch('/api/departamentos')
+        const departamento = response.data?.find((d: any) => d.id == departamentoId)
+        departamentoFiltrado.value = departamento
+      } catch (error) {
+        console.warn('Erro ao buscar dados do departamento:', error)
+      }
+    } else {
+      departamentoFiltrado.value = null
+    }
+    
+    if (cargoId) {
+      params.push(`cargo=${cargoId}`)
+      // Buscar dados do cargo para mostrar no filtro
+      try {
+        const response = await $fetch('/api/cargos')
+        const cargo = response.data?.find((c: any) => c.id == cargoId)
+        cargoFiltrado.value = cargo
+      } catch (error) {
+        console.warn('Erro ao buscar dados do cargo:', error)
+      }
+    } else {
+      cargoFiltrado.value = null
+    }
+    
+    if (params.length > 0) {
+      url += `?${params.join('&')}`
+    }
+    
+    const data = await $fetch(url)
     
     if (data) {
       // Transformar dados da API para formato esperado pelo frontend
@@ -195,6 +269,11 @@ const carregarFuncionarios = async () => {
 
 // Carregar ao montar
 onMounted(() => {
+  carregarFuncionarios()
+})
+
+// Recarregar quando a rota mudar (qualquer filtro)
+watch(() => [useRoute().query.empresa, useRoute().query.departamento, useRoute().query.cargo], () => {
   carregarFuncionarios()
 })
 
@@ -332,6 +411,7 @@ const abrirModal = async (func?: any) => {
       conta: '',
       tipo_conta: '',
       forma_pagamento: 'deposito',
+      chave_pix: '',
       
       // Benefícios
       beneficios: {
@@ -526,5 +606,9 @@ const handleEmailErro = (mensagem: string) => {
     variant: 'error'
   }
   mostrarNotificacao.value = true
+}
+
+const limparFiltro = () => {
+  navigateTo('/admin/funcionarios')
 }
 </script>

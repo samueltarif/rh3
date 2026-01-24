@@ -19,7 +19,15 @@ export default defineEventHandler(async (event) => {
         id,
         nome_completo,
         data_nascimento,
-        avatar
+        avatar,
+        cargos (
+          id,
+          nome
+        ),
+        departamentos (
+          id,
+          nome
+        )
       `)
       .eq('status', 'ativo')
       .not('data_nascimento', 'is', null)
@@ -39,7 +47,12 @@ export default defineEventHandler(async (event) => {
       const mesNascimento = dataNascimento.getMonth() + 1
       
       return mesNascimento === mesAtual
-    }) || []
+    }).map(funcionario => ({
+      ...funcionario,
+      dia: new Date(funcionario.data_nascimento).getDate(),
+      cargo: funcionario.cargos?.nome || 'Cargo não definido',
+      departamento: funcionario.departamentos?.nome || 'Departamento não definido'
+    })) || []
     
     console.log('[ANIVERSARIANTES] Aniversariantes do mês:', aniversariantesMes.length)
     

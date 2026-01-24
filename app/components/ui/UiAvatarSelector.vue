@@ -22,14 +22,13 @@
             :key="avatar.id"
             @click="selectAvatar(avatar.id)"
             :class="[
-              'p-2 rounded-xl border-2 transition-all hover:scale-105',
+              'p-3 rounded-xl border-2 transition-all hover:scale-105',
               selectedAvatar === avatar.id 
                 ? 'border-blue-500 bg-blue-50' 
                 : 'border-gray-200 hover:border-gray-300'
             ]"
           >
             <div class="text-4xl">{{ avatar.emoji }}</div>
-            <p class="text-xs text-gray-600 mt-1">{{ avatar.name }}</p>
           </button>
         </div>
       </div>
@@ -67,87 +66,87 @@ const saving = ref(false)
 // Lista de avatares disponíveis (específicos para os cargos da empresa)
 const avatarOptions = [
   // Avatares básicos
-  { id: 'person-1', name: 'Pessoa Padrão', emoji: '👤' },
+  { id: 'person-1', emoji: '👤' },
   
   // GERENTE - Responsável por Fiscal, Financeiro, Comercial, RH e Administrativo
-  { id: 'gerente-1', name: 'Gerente', emoji: '👨‍💼' },
-  { id: 'gerente-2', name: 'Gerente', emoji: '👩‍💼' },
-  { id: 'gerente-3', name: 'Gerente Moreno', emoji: '👨🏽‍💼' },
-  { id: 'gerente-4', name: 'Gerente Morena', emoji: '👩🏽‍💼' },
+  { id: 'gerente-1', emoji: '👨‍💼' },
+  { id: 'gerente-2', emoji: '👩‍💼' },
+  { id: 'gerente-3', emoji: '👨🏽‍💼' },
+  { id: 'gerente-4', emoji: '👩🏽‍💼' },
   
   // ASSISTENTE COMERCIAL
-  { id: 'ass-comercial-1', name: 'Assistente Comercial', emoji: '🧑‍💼' },
-  { id: 'ass-comercial-2', name: 'Assistente Comercial', emoji: '👨‍💼' },
-  { id: 'ass-comercial-3', name: 'Assistente Comercial', emoji: '👩‍💼' },
-  { id: 'ass-comercial-4', name: 'Assistente Comercial Moreno', emoji: '👨🏽‍💼' },
-  { id: 'ass-comercial-5', name: 'Assistente Comercial Morena', emoji: '👩🏽‍💼' },
+  { id: 'ass-comercial-1', emoji: '🧑‍💼' },
+  { id: 'ass-comercial-2', emoji: '👨‍💼' },
+  { id: 'ass-comercial-3', emoji: '👩‍💼' },
+  { id: 'ass-comercial-4', emoji: '👨🏽‍💼' },
+  { id: 'ass-comercial-5', emoji: '👩🏽‍💼' },
   
   // REPRESENTANTE COMERCIAL
-  { id: 'rep-comercial-1', name: 'Representante Comercial', emoji: '🤝' },
-  { id: 'rep-comercial-2', name: 'Representante Comercial', emoji: '👔' },
-  { id: 'rep-comercial-3', name: 'Representante Comercial', emoji: '💼' },
+  { id: 'rep-comercial-1', emoji: '🤝' },
+  { id: 'rep-comercial-2', emoji: '👔' },
+  { id: 'rep-comercial-3', emoji: '💼' },
   
   // AUXILIAR COMERCIAL
-  { id: 'aux-comercial-1', name: 'Auxiliar Comercial', emoji: '📊' },
-  { id: 'aux-comercial-2', name: 'Auxiliar Comercial', emoji: '📈' },
-  { id: 'aux-comercial-3', name: 'Auxiliar Comercial', emoji: '💹' },
+  { id: 'aux-comercial-1', emoji: '📊' },
+  { id: 'aux-comercial-2', emoji: '📈' },
+  { id: 'aux-comercial-3', emoji: '💹' },
   
   // ASSISTENTE DE PRODUÇÃO
-  { id: 'ass-producao-1', name: 'Assistente de Produção', emoji: '👷‍♂️' },
-  { id: 'ass-producao-2', name: 'Assistente de Produção', emoji: '👷‍♀️' },
-  { id: 'ass-producao-3', name: 'Assistente de Produção Moreno', emoji: '👷🏽‍♂️' },
-  { id: 'ass-producao-4', name: 'Assistente de Produção Morena', emoji: '👷🏽‍♀️' },
+  { id: 'ass-producao-1', emoji: '👷‍♂️' },
+  { id: 'ass-producao-2', emoji: '👷‍♀️' },
+  { id: 'ass-producao-3', emoji: '👷🏽‍♂️' },
+  { id: 'ass-producao-4', emoji: '👷🏽‍♀️' },
   
   // AUXILIAR DE PRODUÇÃO
-  { id: 'aux-producao-1', name: 'Auxiliar de Produção', emoji: '🔧' },
-  { id: 'aux-producao-2', name: 'Auxiliar de Produção', emoji: '⚙️' },
-  { id: 'aux-producao-3', name: 'Auxiliar de Produção', emoji: '🛠️' },
+  { id: 'aux-producao-1', emoji: '🔧' },
+  { id: 'aux-producao-2', emoji: '⚙️' },
+  { id: 'aux-producao-3', emoji: '🛠️' },
   
   // SOLDADOR
-  { id: 'soldador-1', name: 'Soldador', emoji: '👨‍🔧' },
-  { id: 'soldador-2', name: 'Soldador', emoji: '👩‍🔧' },
-  { id: 'soldador-3', name: 'Soldador Moreno', emoji: '👨🏽‍🔧' },
-  { id: 'soldador-4', name: 'Soldador Morena', emoji: '👩🏽‍🔧' },
-  { id: 'soldador-5', name: 'Soldador', emoji: '🔥' },
-  { id: 'soldador-6', name: 'Soldador', emoji: '⚡' },
+  { id: 'soldador-1', emoji: '👨‍🔧' },
+  { id: 'soldador-2', emoji: '👩‍🔧' },
+  { id: 'soldador-3', emoji: '👨🏽‍🔧' },
+  { id: 'soldador-4', emoji: '👩🏽‍🔧' },
+  { id: 'soldador-5', emoji: '🔥' },
+  { id: 'soldador-6', emoji: '⚡' },
   
   // AUXILIAR ADMINISTRATIVO
-  { id: 'aux-admin-1', name: 'Auxiliar Administrativo', emoji: '📋' },
-  { id: 'aux-admin-2', name: 'Auxiliar Administrativo', emoji: '📝' },
-  { id: 'aux-admin-3', name: 'Auxiliar Administrativo', emoji: '🗂️' },
-  { id: 'aux-admin-4', name: 'Auxiliar Administrativo', emoji: '📄' },
+  { id: 'aux-admin-1', emoji: '📋' },
+  { id: 'aux-admin-2', emoji: '📝' },
+  { id: 'aux-admin-3', emoji: '🗂️' },
+  { id: 'aux-admin-4', emoji: '📄' },
   
   // LÍDER DE ESTOQUE
-  { id: 'lider-estoque-1', name: 'Líder de Estoque', emoji: '📦' },
-  { id: 'lider-estoque-2', name: 'Líder de Estoque', emoji: '🏪' },
-  { id: 'lider-estoque-3', name: 'Líder de Estoque Moreno', emoji: '👨🏽‍💼' },
-  { id: 'lider-estoque-4', name: 'Líder de Estoque Morena', emoji: '👩🏽‍💼' },
+  { id: 'lider-estoque-1', emoji: '📦' },
+  { id: 'lider-estoque-2', emoji: '🏪' },
+  { id: 'lider-estoque-3', emoji: '👨🏽‍💼' },
+  { id: 'lider-estoque-4', emoji: '👩🏽‍💼' },
   
   // AUXILIAR DE ESTOQUE
-  { id: 'aux-estoque-1', name: 'Auxiliar de Estoque', emoji: '📋' },
-  { id: 'aux-estoque-2', name: 'Auxiliar de Estoque', emoji: '📊' },
-  { id: 'aux-estoque-3', name: 'Auxiliar de Estoque', emoji: '🏷️' },
-  { id: 'aux-estoque-4', name: 'Auxiliar de Estoque', emoji: '📈' },
+  { id: 'aux-estoque-1', emoji: '📋' },
+  { id: 'aux-estoque-2', emoji: '📊' },
+  { id: 'aux-estoque-3', emoji: '🏷️' },
+  { id: 'aux-estoque-4', emoji: '📈' },
   
   // AUXILIAR DE EXPEDIÇÃO
-  { id: 'aux-expedicao-1', name: 'Auxiliar de Expedição', emoji: '🚚' },
-  { id: 'aux-expedicao-2', name: 'Auxiliar de Expedição', emoji: '📦' },
-  { id: 'aux-expedicao-3', name: 'Auxiliar de Expedição', emoji: '🚛' },
-  { id: 'aux-expedicao-4', name: 'Auxiliar de Expedição', emoji: '📮' },
+  { id: 'aux-expedicao-1', emoji: '🚚' },
+  { id: 'aux-expedicao-2', emoji: '📦' },
+  { id: 'aux-expedicao-3', emoji: '🚛' },
+  { id: 'aux-expedicao-4', emoji: '📮' },
   
   // AUXILIAR DE SERVIÇOS GERAIS
-  { id: 'aux-servicos-1', name: 'Auxiliar de Serviços Gerais', emoji: '🧹' },
-  { id: 'aux-servicos-2', name: 'Auxiliar de Serviços Gerais', emoji: '🧽' },
-  { id: 'aux-servicos-3', name: 'Auxiliar de Serviços Gerais', emoji: '🧴' },
-  { id: 'aux-servicos-4', name: 'Auxiliar de Serviços Gerais', emoji: '🗑️' },
+  { id: 'aux-servicos-1', emoji: '🧹' },
+  { id: 'aux-servicos-2', emoji: '🧽' },
+  { id: 'aux-servicos-3', emoji: '🧴' },
+  { id: 'aux-servicos-4', emoji: '🗑️' },
   
   // TI (Técnico de Informática)
-  { id: 'ti-1', name: 'Técnico de TI', emoji: '👨‍💻' },
-  { id: 'ti-2', name: 'Técnico de TI', emoji: '👩‍💻' },
-  { id: 'ti-3', name: 'Técnico de TI Moreno', emoji: '👨🏽‍💻' },
-  { id: 'ti-4', name: 'Técnico de TI Morena', emoji: '👩🏽‍💻' },
-  { id: 'ti-5', name: 'Técnico de TI', emoji: '💻' },
-  { id: 'ti-6', name: 'Técnico de TI', emoji: '🖥️' }
+  { id: 'ti-1', emoji: '👨‍💻' },
+  { id: 'ti-2', emoji: '👩‍💻' },
+  { id: 'ti-3', emoji: '👨🏽‍💻' },
+  { id: 'ti-4', emoji: '👩🏽‍💻' },
+  { id: 'ti-5', emoji: '💻' },
+  { id: 'ti-6', emoji: '🖥️' }
 ]
 
 const selectAvatar = (avatarId: string) => {

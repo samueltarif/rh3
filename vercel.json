@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/verificar-disponibilizacao-adiantamentos",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/verificar-aniversariantes-diario",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

@@ -619,12 +619,8 @@ const disponibilizarHolerites = async () => {
     }
     
     if (holeritesFiltrados.length === 0) {
-      notificacao.value = {
-        title: 'Aviso',
-        message: 'Nenhum holerite para disponibilizar',
-        variant: 'warning'
-      }
-      mostrarNotificacao.value = true
+      const { notifyWarning } = useNotifications()
+      notifyWarning('Nenhum Holerite', 'Nenhum holerite encontrado para disponibilizar')
       loading.value = false
       return
     }
@@ -654,22 +650,28 @@ const disponibilizarHolerites = async () => {
         ? 'folhas mensais' 
         : 'holerites'
     
-    notificacao.value = {
-      title: 'Disponibilização Concluída!',
-      message: `${disponibilizados} ${tipoTexto} disponibilizado(s) no perfil${erros > 0 ? ` (${erros} erro(s))` : ''}`,
-      variant: erros > 0 ? 'warning' : 'success'
+    const { notifySuccess, notifyWarning } = useNotifications()
+    
+    if (erros > 0) {
+      notifyWarning(
+        'Disponibilização Parcial',
+        `${disponibilizados} ${tipoTexto} disponibilizado(s), ${erros} erro(s)`
+      )
+    } else {
+      notifySuccess(
+        'Holerites Disponibilizados!',
+        `${disponibilizados} ${tipoTexto} agora estão visíveis no perfil dos funcionários`
+      )
     }
-    mostrarNotificacao.value = true
     
     // Recarregar lista
     await carregarHolerites()
   } catch (error: any) {
-    notificacao.value = {
-      title: 'Erro!',
-      message: error.data?.message || 'Erro ao disponibilizar holerites',
-      variant: 'error'
-    }
-    mostrarNotificacao.value = true
+    const { notifyError } = useNotifications()
+    notifyError(
+      'Erro na Disponibilização!',
+      error.data?.message || 'Erro ao disponibilizar holerites'
+    )
   } finally {
     loading.value = false
   }
@@ -713,22 +715,28 @@ const gerarHoleritesAutomaticos = async () => {
       }
     })
     
-    notificacao.value = {
-      title: 'Sucesso!',
-      message: resultado.message || `${tipoGeracao.value === 'adiantamento' ? 'Adiantamentos' : 'Holerites'} gerados com sucesso`,
-      variant: 'success'
-    }
-    mostrarNotificacao.value = true
+    // Usar o novo sistema de notificações toast
+    const { notifySuccess } = useNotifications()
+    
+    const tipoTexto = tipoGeracao.value === 'adiantamento' ? 'Adiantamentos' : 'Folhas mensais'
+    const detalhes = tipoGeracao.value === 'adiantamento' 
+      ? 'Serão disponibilizados automaticamente no dia 17'
+      : 'Aguardando disponibilização manual'
+    
+    notifySuccess(
+      `${tipoTexto} Gerados!`,
+      `${resultado.total_gerados || 0} holerite(s) criado(s). ${detalhes}`,
+      7000
+    )
     
     // Recarregar lista
     await carregarHolerites()
   } catch (error: any) {
-    notificacao.value = {
-      title: 'Erro!',
-      message: error.data?.message || 'Erro ao gerar holerites automaticamente',
-      variant: 'error'
-    }
-    mostrarNotificacao.value = true
+    const { notifyError } = useNotifications()
+    notifyError(
+      'Erro na Geração!',
+      error.data?.message || 'Erro ao gerar holerites automaticamente'
+    )
   } finally {
     loading.value = false
   }

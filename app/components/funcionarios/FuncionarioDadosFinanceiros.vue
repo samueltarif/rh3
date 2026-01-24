@@ -58,6 +58,12 @@
         :options="formaPagamentoOptions" 
         label="Forma de Pagamento"
       />
+      
+      <UiInput 
+        v-model="form.chave_pix" 
+        label="Chave PIX (Opcional)" 
+        placeholder="CPF, email, telefone ou chave aleatória"
+      />
     </div>
   </div>
 </template>
@@ -77,8 +83,7 @@ const tipoSalarioOptions = [
 ]
 
 const formaPagamentoOptions = [
-  { value: 'deposito', label: 'Depósito Bancário' },
-  { value: 'pix', label: 'PIX' }
+  { value: 'deposito', label: 'Depósito Bancário' }
 ]
 
 const tipoContaOptions = [

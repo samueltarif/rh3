@@ -5,7 +5,7 @@
       <div class="w-12 h-12 bg-primary-600 rounded-xl flex items-center justify-center">
         <span class="text-white font-bold text-xl">RH</span>
       </div>
-      <div>
+      <div class="flex-1">
         <h1 class="text-xl font-bold text-gray-800">Sistema RH</h1>
         <p class="text-sm text-gray-500">Gestão de Pessoas</p>
       </div>
@@ -23,6 +23,30 @@
             Administração
           </p>
         </div>
+        
+        <!-- Botão de Notificações (Desktop) -->
+        <button 
+          @click="toggleNotifications"
+          class="w-full flex items-center gap-3 px-4 py-3 text-base font-medium rounded-xl transition-colors relative"
+          :class="[
+            showNotifications 
+              ? 'bg-blue-100 text-blue-700' 
+              : 'text-gray-700 hover:bg-gray-100'
+          ]"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM11 19H6.5A2.5 2.5 0 014 16.5v-9A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V11"/>
+          </svg>
+          <span>Notificações</span>
+          <!-- Badge de notificações -->
+          <span 
+            v-if="unreadCount > 0"
+            class="absolute top-2 left-7 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium"
+          >
+            {{ unreadCount > 9 ? '9+' : unreadCount }}
+          </span>
+        </button>
+        
         <LayoutNavLink to="/admin/funcionarios" icon="users">Funcionários</LayoutNavLink>
         <LayoutNavLink to="/admin/jornadas" icon="clock">Jornadas de Trabalho</LayoutNavLink>
         <LayoutNavLink to="/admin/empresas" icon="office">Empresas</LayoutNavLink>
@@ -31,6 +55,30 @@
         <LayoutNavLink to="/admin/holerites" icon="money">Holerites</LayoutNavLink>
       </template>
     </nav>
+
+    <!-- Painel de Notificações (Desktop) -->
+    <div 
+      v-if="showNotifications && isAdmin"
+      class="absolute top-0 left-72 w-80 h-full bg-white border-r border-gray-200 shadow-lg z-40"
+    >
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold text-gray-900">📢 Notificações do Sistema</h3>
+          <button 
+            @click="showNotifications = false"
+            class="p-1 rounded-lg hover:bg-gray-100"
+          >
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <div class="h-full overflow-y-auto pb-20">
+        <AdminNotificationPanel />
+      </div>
+    </div>
 
     <!-- Usuário Logado -->
     <div class="p-4 border-t border-gray-200">
@@ -66,6 +114,14 @@ defineEmits<{
 
 const { logout } = useAuth()
 
+// Estado das notificações
+const showNotifications = ref(false)
+const unreadCount = ref(3) // Isso viria de uma API real
+
+const toggleNotifications = () => {
+  showNotifications.value = !showNotifications.value
+}
+
 // Mapa para conversão de IDs para nomes de cargos
 const cargosMap = ref<Record<string, string>>({})
 
@@ -90,8 +146,8 @@ const carregarCargos = async () => {
   }
 }
 
-// Carregar cargos ao montar
-onMounted(() => {
-  carregarCargos()
+// Carregar dados ao montar
+onMounted(async () => {
+  await carregarCargos()
 })
 </script>
