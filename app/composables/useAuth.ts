@@ -69,11 +69,32 @@ export const useAuth = () => {
   }
 
   const logout = () => {
+    console.log('🔐 [AUTH] Fazendo logout...')
+    
+    // Limpar estado do usuário
     user.value = null
+    
     // Limpar localStorage
     if (process.client) {
-      localStorage.removeItem('auth-user')
+      try {
+        localStorage.removeItem('auth-user')
+        console.log('🔐 [AUTH] localStorage limpo')
+        
+        // CORREÇÃO: Limpar TODOS os estados globais relacionados
+        // Limpar notificações
+        if (typeof useState === 'function') {
+          const notificationsOpen = useState('notifications-open', () => false)
+          notificationsOpen.value = false
+        }
+        
+        // Forçar reload da página para limpar todos os estados
+        window.location.href = '/login'
+        return
+      } catch (error) {
+        console.error('🔐 [AUTH] Erro ao limpar localStorage:', error)
+      }
     }
+    
     navigateTo('/login')
   }
 

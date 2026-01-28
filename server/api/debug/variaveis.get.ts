@@ -1,50 +1,87 @@
-// API para debug das variáveis de ambiente (apenas em desenvolvimento)
 export default defineEventHandler(async (event) => {
-  // Só funciona em desenvolvimento por segurança
-  const config = useRuntimeConfig()
+  // Esta API só deve funcionar em desenvolvimento ou com token especial
+  const query = getQuery(event)
+  const debugToken = query.token
   
-  // Verificar se estamos em produção
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production'
+  // Token de segurança para produção
+  const isAuthorized = process.env.NODE_ENV === 'development' || 
+                      debugToken === 'qualitec-debug-2026-secure'
   
-  if (isProduction) {
+  if (!isAuthorized) {
     throw createError({
       statusCode: 403,
-      message: 'Debug não disponível em produção'
+      message: 'Acesso negado'
     })
   }
+
+  const config = useRuntimeConfig()
   
-  try {
-    const variaveis = {
-      // Variáveis do runtime config
-      supabaseUrl: config.public.supabaseUrl,
-      supabaseKey: config.public.supabaseKey ? 'DEFINIDA' : 'NÃO DEFINIDA',
-      serviceRoleKey: config.supabaseServiceRoleKey ? 'DEFINIDA' : 'NÃO DEFINIDA',
-      baseUrl: config.public.baseUrl,
-      
-      // Variáveis de ambiente diretas
-      env: {
-        SUPABASE_URL: process.env.SUPABASE_URL ? 'DEFINIDA' : 'NÃO DEFINIDA',
-        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA',
-        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA',
-        NUXT_PUBLIC_SUPABASE_URL: process.env.NUXT_PUBLIC_SUPABASE_URL ? 'DEFINIDA' : 'NÃO DEFINIDA',
-        NUXT_PUBLIC_SUPABASE_KEY: process.env.NUXT_PUBLIC_SUPABASE_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA',
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL_ENV: process.env.VERCEL_ENV,
-        VERCEL_URL: process.env.VERCEL_URL
-      }
-    }
+  console.log('🔍 [DEBUG-VARIAVEIS] === VERIFICAÇÃO DE CONFIGURAÇÕES ===')
+  console.log('🔍 [DEBUG-VARIAVEIS] Timestamp:', new Date().toISOString())
+  console.log('🔍 [DEBUG-VARIAVEIS] Environment:', process.env.NODE_ENV)
+  console.log('🔍 [DEBUG-VARIAVEIS] Vercel URL:', process.env.VERCEL_URL)
+  
+  // Verificar todas as variáveis importantes
+  const variaveis = {
+    // Ambiente
+    NODE_ENV: process.env.NODE_ENV || 'MISSING',
+    VERCEL_URL: process.env.VERCEL_URL || 'MISSING',
+    ENVIRONMENT: process.env.ENVIRONMENT || 'MISSING',
     
-    return {
-      success: true,
-      message: 'Debug das variáveis de ambiente',
-      data: variaveis,
-      timestamp: new Date().toISOString()
-    }
+    // Supabase - URLs
+    SUPABASE_URL: process.env.SUPABASE_URL ? 'PRESENTE' : 'MISSING',
+    NUXT_PUBLIC_SUPABASE_URL: process.env.NUXT_PUBLIC_SUPABASE_URL ? 'PRESENTE' : 'MISSING',
     
-  } catch (error: any) {
-    throw createError({
-      statusCode: 500,
-      message: `Erro no debug: ${error.message}`
-    })
+    // Supabase - Chaves
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'PRESENTE' : 'MISSING',
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'PRESENTE' : 'MISSING',
+    NUXT_PUBLIC_SUPABASE_KEY: process.env.NUXT_PUBLIC_SUPABASE_KEY ? 'PRESENTE' : 'MISSING',
+    
+    // Runtime Config
+    'config.public.supabaseUrl': config.public.supabaseUrl ? 'PRESENTE' : 'MISSING',
+    'config.public.supabaseKey': config.public.supabaseKey ? 'PRESENTE' : 'MISSING',
+    'config.supabaseServiceRoleKey': config.supabaseServiceRoleKey ? 'PRESENTE' : 'MISSING',
+    
+    // Email
+    GMAIL_EMAIL: process.env.GMAIL_EMAIL ? 'PRESENTE' : 'MISSING',
+    GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? 'PRESENTE' : 'MISSING',
+    
+    // Segurança
+    NUXT_SECRET_KEY: process.env.NUXT_SECRET_KEY ? 'PRESENTE' : 'MISSING',
+    CRON_SECRET: process.env.CRON_SECRET ? 'PRESENTE' : 'MISSING'
+  }
+  
+  console.log('🔍 [DEBUG-VARIAVEIS] Variáveis verificadas:', variaveis)
+  
+  // Verificar se as variáveis críticas estão presentes
+  const variavelsCriticas = [
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'NUXT_PUBLIC_SUPABASE_URL',
+    'NUXT_PUBLIC_SUPABASE_KEY'
+  ]
+  
+  const variavelsFaltando = variavelsCriticas.filter(v => !process.env[v])
+  
+  const status = {
+    ambiente: process.env.NODE_ENV || 'unknown',
+    timestamp: new Date().toISOString(),
+    variaveis,
+    variavelsCriticas: {
+      total: variavelsCriticas.length,
+      presentes: variavelsCriticas.length - variavelsFaltando.length,
+      faltando: variavelsFaltando
+    },
+    configuracaoOK: variavelsFaltando.length === 0,
+    urls: {
+      supabaseUrl: config.public.supabaseUrl || 'MISSING',
+      baseUrl: config.public.baseUrl || 'MISSING'
+    }
+  }
+  
+  console.log('🔍 [DEBUG-VARIAVEIS] Status final:', status)
+  
+  return {
+    success: true,
+    data: status
   }
 })

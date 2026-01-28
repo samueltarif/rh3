@@ -1,156 +1,137 @@
-# Correção: Holerites não aparecem para funcionários em produção
+# Correção: Holerites Não Aparecem para Funcionários em Produção
 
-**Data**: 28/01/2026  
-**Problema**: Holerites funcionam em localhost mas não aparecem em produção  
-**Status**: ✅ CORRIGIDO
+## Problema Identificado
 
-## 🔍 Diagnóstico
+Os funcionários conseguem ver os holerites no **dashboard** mas não na página **"Meus Holerites"**. Isso indica um problema específico na API `/api/holerites/meus-holerites.get.ts`.
 
-### Problemas Identificados:
-1. **Logs insuficientes** para debug em produção
-2. **Timeout baixo** nas requisições para produção
-3. **Tratamento de erro inadequado** para ambiente de produção
-4. **Falta de verificação de status** dos holerites
-5. **Possível problema de SSR/hidratação**
+## Sintomas
 
-## 🔧 Correções Aplicadas
+1. ✅ **Dashboard**: Holerites aparecem normalmente
+2. ❌ **Página /holerites**: Mostra "Nenhum holerite encontrado"
+3. 🔍 **Ambiente**: Problema ocorre apenas em produção, funciona em localhost
 
-### 1. **Melhorias na API `meus-holerites.get.ts`**
+## Análise do Problema
+
+### Possíveis Causas
+
+1. **Configuração de Ambiente**: Diferenças entre localhost e produção
+2. **Timeout da API**: Requisições podem estar expirando em produção
+3. **Autenticação**: Problemas com o Service Role Key
+4. **RLS (Row Level Security)**: Políticas do Supabase bloqueando acesso
+5. **Headers HTTP**: Diferenças nos headers entre ambientes
+
+### Código Atual da API
+
+A API `/api/holerites/meus-holerites.get.ts` já possui:
+- ✅ Logs detalhados para debug
+- ✅ Timeout de 30 segundos
+- ✅ Retry de 3 tentativas
+- ✅ Uso do Service Role Key para bypassar RLS
+- ✅ Verificação de configurações
+
+## Correções Implementadas
+
+### 1. Logs Aprimorados
+
 ```typescript
-// ✅ Logs detalhados para produção
-console.log('🔍 [MEUS-HOLERITES] === INÍCIO DA REQUISIÇÃO ===')
-console.log('🔍 [MEUS-HOLERITES] Timestamp:', new Date().toISOString())
-console.log('🔍 [MEUS-HOLERITES] Funcionário ID:', funcionarioId)
-console.log('🔍 [MEUS-HOLERITES] URL Supabase:', supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING')
+console.log('🔍 [MEUS-HOLERITES] Environment:', process.env.NODE_ENV)
+console.log('🔍 [MEUS-HOLERITES] Supabase URL:', supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING')
+console.log('🔍 [MEUS-HOLERITES] Service Role Key:', serviceRoleKey ? 'PRESENTE' : 'MISSING')
+```
 
-// ✅ Verificação de holerites com status "gerado"
-const todosHolerites = await fetch(
-  `${supabaseUrl}/rest/v1/holerites?funcionario_id=eq.${funcionarioId}&select=id,status&order=periodo_inicio.desc`,
-  { headers }
-)
-const todos = await todosHolerites.json()
-const gerados = todos.filter(h => h.status === 'gerado')
-if (gerados.length > 0) {
-  console.log(`⚠️ [MEUS-HOLERITES] ${gerados.length} holerite(s) com status "gerado" não exibidos`)
+### 2. Verificação de Configurações
+
+```typescript
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error('❌ [MEUS-HOLERITES] Configurações do Supabase faltando!')
+  throw createError({
+    statusCode: 500,
+    message: 'Configuração do servidor incompleta'
+  })
 }
 ```
 
-### 2. **Melhorias na página `holerites.vue`**
+### 3. Headers Específicos para Produção
+
 ```typescript
-// ✅ Timeout maior para produção
+const headers = {
+  'apikey': serviceRoleKey,
+  'Authorization': `Bearer ${serviceRoleKey}`,
+  'Content-Type': 'application/json',
+  'User-Agent': 'Nuxt-Server'
+}
+```
+
+### 4. Timeout Aumentado na Página
+
+```typescript
 const data = await $fetch('/api/holerites/meus-holerites', {
   query: { funcionarioId },
   retry: 3,
   timeout: 30000 // 30 segundos timeout para produção
 })
-
-// ✅ Aguardar usuário com mais tentativas
-let tentativas = 0
-while (!user.value && tentativas < 10) {
-  console.log(`🔍 [HOLERITES-PAGE] Aguardando usuário... tentativa ${tentativas + 1}`)
-  await new Promise(resolve => setTimeout(resolve, 500))
-  tentativas++
-}
-
-// ✅ Logs detalhados para debug
-console.log('📊 [HOLERITES-PAGE] Resposta da API:', data)
-console.log('📊 [HOLERITES-PAGE] Tipo da resposta:', typeof data)
-console.log('📊 [HOLERITES-PAGE] É array?', Array.isArray(data))
 ```
 
-### 3. **Melhorias no composable `useAuth.ts`**
-```typescript
-// ✅ Tratamento de erro no localStorage
-if (process.client) {
-  try {
-    const stored = localStorage.getItem('auth-user')
-    const parsed = stored ? JSON.parse(stored) : null
-    console.log('🔐 [AUTH] Usuário recuperado do localStorage:', parsed?.nome || 'NENHUM')
-    return parsed
-  } catch (error) {
-    console.error('🔐 [AUTH] Erro ao recuperar usuário do localStorage:', error)
-    return null
-  }
-}
+## Script de Teste
 
-// ✅ Timeout maior para login em produção
-const response = await $fetch('/api/auth/login', {
-  method: 'POST',
-  body: { email, senha },
-  timeout: 30000 // 30 segundos para produção
-})
-```
+Criado script `scripts/testar-holerites-funcionario.js` para testar a API diretamente no console do navegador.
 
-## 🧪 Script de Teste Criado
+## Próximos Passos
 
-**Arquivo**: `scripts/testar-holerites-funcionario.js`
+### 1. Verificar Logs em Produção
+
+Execute o script de teste e verifique os logs no console do navegador:
 
 ```javascript
-// Testa se os holerites estão aparecendo para funcionários
-async function testarHoleritesFuncionario() {
-  // 1. Verificar holerites no banco
-  const todosHolerites = await fetch('/api/holerites?limite=10')
-  
-  // 2. Testar API específica do funcionário
-  const meusHolerites = await fetch(`/api/holerites/meus-holerites?funcionarioId=1`)
-  
-  // 3. Testar outros funcionários
-  for (let id = 2; id <= 5; id++) {
-    const response = await fetch(`/api/holerites/meus-holerites?funcionarioId=${id}`)
-  }
-}
+// Cole no console da página /holerites
+// Código do script testar-holerites-funcionario.js
 ```
 
-## 🎯 Possíveis Causas em Produção
+### 2. Verificar Variáveis de Ambiente
 
-### 1. **Status dos Holerites**
-- Holerites com status `"gerado"` NÃO aparecem para funcionários
-- Apenas holerites com status `"enviado"` ou `"visualizado"` são exibidos
-- **Verificar**: Se os holerites em produção têm o status correto
+Confirmar se as variáveis estão corretas em produção:
+- `NUXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-### 2. **Variáveis de Ambiente**
-- `SUPABASE_URL` pode estar diferente
-- `SUPABASE_SERVICE_ROLE_KEY` pode estar ausente
-- **Verificar**: Configurações no Vercel/produção
+### 3. Testar API Diretamente
 
-### 3. **Problemas de SSR**
-- Hidratação pode falhar em produção
-- `localStorage` pode não estar disponível
-- **Solução**: Timeouts maiores e mais tentativas
-
-### 4. **Problemas de Rede**
-- Latência maior em produção
-- Timeouts muito baixos
-- **Solução**: Timeout de 30 segundos implementado
-
-## 📋 Checklist de Verificação
-
-### Em Produção, verificar:
-- [ ] Logs da API `meus-holerites` aparecem no console
-- [ ] Status dos holerites no banco de dados
-- [ ] Variáveis de ambiente estão corretas
-- [ ] Usuário está sendo autenticado corretamente
-- [ ] Não há erros de CORS ou rede
-
-### Comandos para Debug:
-```javascript
-// No console do navegador em produção:
-testarHoleritesFuncionario()
-
-// Verificar usuário logado:
-console.log('Usuário:', JSON.parse(localStorage.getItem('auth-user')))
-
-// Testar API diretamente:
-fetch('/api/holerites/meus-holerites?funcionarioId=1').then(r => r.json()).then(console.log)
+Testar a API diretamente via URL:
+```
+GET /api/holerites/meus-holerites?funcionarioId=USER_ID
 ```
 
-## 🚀 Deploy
+### 4. Verificar RLS no Supabase
 
-Todas as correções foram aplicadas e enviadas ao GitHub:
-- ✅ Logs detalhados implementados
-- ✅ Timeouts aumentados para produção
-- ✅ Tratamento de erro melhorado
-- ✅ Script de teste criado
-- ✅ Documentação completa
+Confirmar se as políticas RLS estão permitindo acesso aos holerites:
+```sql
+SELECT * FROM holerites WHERE funcionario_id = 'USER_ID' AND status != 'gerado';
+```
 
-**Próximo passo**: Deploy em produção e verificação dos logs.
+## Monitoramento
+
+### Logs a Observar
+
+1. **Configurações**: Verificar se URL e Service Role Key estão presentes
+2. **Requisição**: Status da requisição ao Supabase
+3. **Resposta**: Quantidade de holerites retornados
+4. **Erros**: Qualquer erro de rede ou autenticação
+
+### Métricas
+
+- **Tempo de resposta**: Deve ser < 30 segundos
+- **Taxa de sucesso**: Deve ser 100% para usuários autenticados
+- **Quantidade de holerites**: Deve corresponder aos dados no dashboard
+
+## Status
+
+- ✅ **Logs implementados**: Logs detalhados para debug
+- ✅ **Timeout aumentado**: 30 segundos para produção
+- ✅ **Script de teste**: Disponível para debug
+- ⏳ **Teste em produção**: Aguardando execução
+- ⏳ **Correção final**: Dependente dos resultados dos testes
+
+## Observações
+
+- O problema é específico da página `/holerites`, não do dashboard
+- Indica que a API `/api/holerites/meus-holerites.get.ts` tem problemas específicos
+- Pode ser relacionado a diferenças de configuração entre localhost e produção

@@ -1,71 +1,82 @@
 /**
- * Script para testar criação de notificação via API direta
- * Execute no console do navegador ou via curl
+ * Script para testar as configurações em produção
+ * Execute no console do navegador no site de produção
  */
 
-console.log('🧪 [TESTE-API] Testando criação de notificação via API...')
+console.log('🧪 [TESTE-PRODUCAO] Iniciando teste de configurações...')
 
-async function testarCriacaoViaAPI() {
+// Função para testar as configurações
+async function testarConfiguracoes() {
   try {
-    console.log('📡 [TESTE-API] Fazendo POST para /api/notificacoes/criar...')
+    console.log('🔍 [TESTE-PRODUCAO] Testando API de debug...')
     
-    const response = await fetch('/api/notificacoes/criar', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        titulo: '🧪 Teste via API',
-        mensagem: `Teste de notificação criada em ${new Date().toLocaleString('pt-BR')}`,
-        tipo: 'info',
-        origem: 'teste_api',
-        importante: true,
-        dados: {
-          teste: true,
-          timestamp: new Date().toISOString()
-        }
-      })
-    })
+    // Testar API de debug (só funciona com token)
+    const debugResponse = await fetch('/api/debug/variaveis?token=qualitec-debug-2026-secure')
     
-    const result = await response.json()
-    console.log('📊 [TESTE-API] Resposta:', result)
-    
-    if (result.success) {
-      console.log('✅ [TESTE-API] Notificação criada com sucesso!')
-      console.log('📋 ID da notificação:', result.notificacao?.id)
+    if (debugResponse.ok) {
+      const debugData = await debugResponse.json()
+      console.log('✅ [TESTE-PRODUCAO] Configurações:', debugData)
       
-      // Verificar se aparece na lista
-      setTimeout(async () => {
-        console.log('🔍 [TESTE-API] Verificando se aparece na lista...')
-        
-        const listResponse = await fetch('/api/notificacoes?limite=5')
-        const listData = await listResponse.json()
-        
-        if (listData.success && listData.notificacoes.length > 0) {
-          console.log('📬 [TESTE-API] Últimas notificações:')
-          listData.notificacoes.slice(0, 3).forEach((notif, index) => {
-            console.log(`   ${index + 1}. ${notif.titulo} - ${notif.created_at}`)
-          })
-          
-          const notifTeste = listData.notificacoes.find(n => n.origem === 'teste_api')
-          if (notifTeste) {
-            console.log('✅ [TESTE-API] Notificação de teste encontrada na lista!')
-          } else {
-            console.log('❌ [TESTE-API] Notificação de teste NÃO encontrada na lista')
-          }
-        }
-      }, 1000)
-      
+      if (!debugData.data.configuracaoOK) {
+        console.error('❌ [TESTE-PRODUCAO] Variáveis faltando:', debugData.data.variavelsCriticas.faltando)
+      }
     } else {
-      console.error('❌ [TESTE-API] Erro na criação:', result)
+      console.error('❌ [TESTE-PRODUCAO] Erro na API de debug:', debugResponse.status)
     }
     
   } catch (error) {
-    console.error('💥 [TESTE-API] Erro no teste:', error)
+    console.error('💥 [TESTE-PRODUCAO] Erro no teste:', error)
   }
 }
 
-// Executar teste
-testarCriacaoViaAPI()
+// Função para testar a API de holerites diretamente
+async function testarAPIHolerites() {
+  try {
+    // Pegar o usuário logado
+    const authData = localStorage.getItem('sb-rqryspxfvfzfghrfqtbm-auth-token')
+    if (!authData) {
+      console.error('❌ [TESTE-PRODUCAO] Usuário não logado')
+      return
+    }
+    
+    const user = JSON.parse(authData)
+    const userId = user?.user?.id
+    
+    if (!userId) {
+      console.error('❌ [TESTE-PRODUCAO] ID do usuário não encontrado')
+      return
+    }
+    
+    console.log('👤 [TESTE-PRODUCAO] Testando com usuário:', userId)
+    
+    // Testar API de holerites
+    const holeriteResponse = await fetch(`/api/holerites/meus-holerites?funcionarioId=${userId}`)
+    
+    console.log('📊 [TESTE-PRODUCAO] Status da API de holerites:', holeriteResponse.status)
+    
+    if (holeriteResponse.ok) {
+      const holerites = await holeriteResponse.json()
+      console.log('✅ [TESTE-PRODUCAO] Holerites recebidos:', holerites?.length || 0)
+      
+      if (holerites && holerites.length > 0) {
+        console.log('📋 [TESTE-PRODUCAO] Primeiro holerite:', holerites[0])
+      }
+    } else {
+      const errorText = await holeriteResponse.text()
+      console.error('❌ [TESTE-PRODUCAO] Erro na API de holerites:', errorText)
+    }
+    
+  } catch (error) {
+    console.error('💥 [TESTE-PRODUCAO] Erro no teste de holerites:', error)
+  }
+}
 
-console.log('🔍 [TESTE-API] Para testar novamente, execute: testarCriacaoViaAPI()')
+// Executar testes
+console.log('🚀 [TESTE-PRODUCAO] Executando testes...')
+testarConfiguracoes()
+testarAPIHolerites()
+
+// Informações do ambiente
+console.log('🌍 [TESTE-PRODUCAO] URL atual:', window.location.href)
+console.log('🌍 [TESTE-PRODUCAO] Hostname:', window.location.hostname)
+console.log('🌍 [TESTE-PRODUCAO] É produção?', window.location.hostname.includes('vercel.app'))

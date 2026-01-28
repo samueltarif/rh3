@@ -1,47 +1,60 @@
-# 🔧 CHECKLIST - Variáveis de Ambiente no Vercel
+# Checklist: Variáveis de Ambiente no Vercel
 
-## ✅ VARIÁVEIS OBRIGATÓRIAS PARA CONFIGURAR NO VERCEL:
+## ✅ Variáveis Obrigatórias no Vercel
 
-### 🔑 Supabase (CRÍTICAS)
+### 1. Supabase - URLs
+- [ ] `NUXT_PUBLIC_SUPABASE_URL` = `https://rqryspxfvfzfghrfqtbm.supabase.co`
+- [ ] `SUPABASE_URL` = `https://rqryspxfvfzfghrfqtbm.supabase.co`
+
+### 2. Supabase - Chaves de API
+- [ ] `NUXT_PUBLIC_SUPABASE_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (Anon Key)
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (Service Role Key)
+- [ ] `SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (Anon Key)
+
+### 3. Email
+- [ ] `GMAIL_EMAIL` = `qualitecinstrumentosdemedicao@gmail.com`
+- [ ] `GMAIL_APP_PASSWORD` = `byeqpdyllakkwxkk`
+
+### 4. Segurança
+- [ ] `NUXT_SECRET_KEY` = `qualitec-rh-system-2025-super-secret-key-production-ready`
+- [ ] `CRON_SECRET` = `qualitec-cron-contador-diario-2026-secure-token-xyz789`
+
+### 5. Ambiente
+- [ ] `ENVIRONMENT` = `Production`
+- [ ] `NODE_ENV` = `production` (automático no Vercel)
+
+## 🚨 Variável CRÍTICA para Holerites
+
+A variável mais importante para o funcionamento dos holerites é:
+
 ```
-NUXT_PUBLIC_SUPABASE_URL=https://rqryspxfvfzfghrfqtbm.supabase.co
-NUXT_PUBLIC_SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxcnlzcHhmdmZ6ZmdocmZxdGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwMTY3NTksImV4cCI6MjA4MzU5Mjc1OX0.bptJ9j_zu151GLQO35kdvXOJzWaRL_7d0haRHKS3jDo
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxcnlzcHhmdmZ6ZmdocmZxdGJtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2ODAxNjc1OSwiZXhwIjoyMDgzNTkyNzU5fQ._AQ67F_-Z9Cvfqv5_ZISgMDbYGRCk2P5wqK1JdFBYA4
-SUPABASE_URL=https://rqryspxfvfzfghrfqtbm.supabase.co
 ```
 
-### 📧 Email (Para envio de holerites)
-```
-GMAIL_EMAIL=qualitecinstrumentosdemedicao@gmail.com
-GMAIL_APP_PASSWORD=byeqpdyllakkwxkk
-EMAIL_JOBS_TOKEN=sk_live_qualitec_email_jobs_2024
-```
+**SEM ESTA VARIÁVEL, OS HOLERITES NÃO APARECEM EM PRODUÇÃO!**
 
-### 🔐 Segurança
-```
-NUXT_SECRET_KEY=qualitec-rh-system-2025-super-secret-key-production-ready
-```
+## 📝 Como Configurar no Vercel
 
-### 🌐 Ambiente
-```
-NUXT_PUBLIC_BASE_URL=https://seu-dominio-vercel.vercel.app
-ENVIRONMENT=Production
-```
+1. Acesse o painel do Vercel
+2. Vá em **Settings** > **Environment Variables**
+3. Adicione cada variável acima
+4. Marque para todos os ambientes: **Production**, **Preview**, **Development**
+5. Clique em **Save**
+6. Faça um novo deploy
 
-### 📊 Projeto Supabase
-```
-SUPABASE_PROJECT_ID=rqryspxfvfzfghrfqtbm
-SUPABASE_PROJECT_NAME=rh-qualitec
-```
+## 🧪 Como Testar
 
-## 🚨 ATENÇÃO:
-1. **NUXT_PUBLIC_BASE_URL** deve ser alterada para a URL do Vercel
-2. **ENVIRONMENT** deve ser "Production" no Vercel
-3. Todas as outras variáveis devem ser copiadas EXATAMENTE como estão
+Após configurar as variáveis:
 
-## 📋 PRÓXIMOS PASSOS:
-1. ✅ Copiar TODAS as variáveis acima para o Vercel
-2. ✅ Alterar NUXT_PUBLIC_BASE_URL para URL do Vercel
-3. ✅ Alterar ENVIRONMENT para "Production"
-4. ✅ Fazer redeploy
-5. ✅ Verificar Runtime Logs nas Functions
+1. Faça um novo deploy no Vercel
+2. Acesse o link de produção
+3. Faça login como funcionário
+4. Vá para "Meus Holerites"
+5. Abra o console (F12) e verifique os logs
+
+## ⚠️ Problemas Comuns
+
+- **Variável não configurada**: Holerites não aparecem
+- **Chave errada**: Erro 401/403 do Supabase
+- **Cache do Vercel**: Limpar cache e fazer novo deploy
+- **Timeout**: Aumentar timeout das funções no Vercel

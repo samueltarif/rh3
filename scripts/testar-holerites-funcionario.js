@@ -1,70 +1,82 @@
 /**
  * Script para testar se os holerites estão aparecendo para funcionários
- * Execute no console do navegador
+ * Execute no console do navegador quando logado como funcionário
  */
 
-console.log('🧪 [TESTE-HOLERITES] Testando holerites para funcionário...')
+console.log('🧪 [TESTE-HOLERITES] Iniciando teste de holerites para funcionário...')
 
-async function testarHoleritesFuncionario() {
-  try {
-    // Primeiro, vamos verificar se há holerites no banco
-    console.log('📊 [TESTE-HOLERITES] 1. Verificando holerites no banco...')
-    
-    const todosHolerites = await fetch('/api/holerites?limite=10')
-    const todosData = await todosHolerites.json()
-    
-    console.log('📋 [TESTE-HOLERITES] Total de holerites no sistema:', todosData.total || 0)
-    if (todosData.holerites && todosData.holerites.length > 0) {
-      console.log('📋 [TESTE-HOLERITES] Primeiros holerites:')
-      todosData.holerites.slice(0, 3).forEach((h, i) => {
-        console.log(`   ${i+1}. ID: ${h.id}, Funcionário: ${h.funcionario_id}, Status: ${h.status}`)
-      })
-    }
-    
-    // Agora vamos testar a API específica do funcionário
-    console.log('👤 [TESTE-HOLERITES] 2. Testando API meus-holerites...')
-    
-    // Testar com ID 1 (admin/funcionário comum)
-    const funcionarioId = 1
-    const meusHolerites = await fetch(`/api/holerites/meus-holerites?funcionarioId=${funcionarioId}`)
-    const meusData = await meusHolerites.json()
-    
-    console.log('📊 [TESTE-HOLERITES] Status da resposta:', meusHolerites.status)
-    console.log('📊 [TESTE-HOLERITES] Dados retornados:', meusData)
-    
-    if (Array.isArray(meusData)) {
-      console.log(`✅ [TESTE-HOLERITES] ${meusData.length} holerite(s) encontrado(s) para funcionário ${funcionarioId}`)
-      meusData.forEach((h, i) => {
-        console.log(`   ${i+1}. ID: ${h.id}, Status: ${h.status}, Período: ${h.periodo_inicio} a ${h.periodo_fim}`)
-      })
-    } else {
-      console.log('❌ [TESTE-HOLERITES] Resposta não é um array:', typeof meusData)
-    }
-    
-    // Testar com outros IDs de funcionários
-    console.log('👥 [TESTE-HOLERITES] 3. Testando outros funcionários...')
-    
-    for (let id = 2; id <= 5; id++) {
-      try {
-        const response = await fetch(`/api/holerites/meus-holerites?funcionarioId=${id}`)
-        const data = await response.json()
-        
-        if (Array.isArray(data)) {
-          console.log(`👤 [TESTE-HOLERITES] Funcionário ${id}: ${data.length} holerite(s)`)
-        } else {
-          console.log(`👤 [TESTE-HOLERITES] Funcionário ${id}: Erro ou sem dados`)
-        }
-      } catch (error) {
-        console.log(`👤 [TESTE-HOLERITES] Funcionário ${id}: Erro na requisição`)
+// Verificar se estamos logados
+const currentUser = JSON.parse(localStorage.getItem('auth-user') || '{}')
+console.log('👤 [TESTE-HOLERITES] Usuário atual:', currentUser?.nome || 'Não logado')
+console.log('👤 [TESTE-HOLERITES] ID do usuário:', currentUser?.id)
+console.log('👤 [TESTE-HOLERITES] É admin?', currentUser?.is_admin)
+
+if (!currentUser?.id) {
+  console.error('❌ [TESTE-HOLERITES] Usuário não está logado!')
+} else {
+  // Testar a API de holerites
+  console.log('🌐 [TESTE-HOLERITES] Testando API de holerites...')
+  
+  const apiUrl = `/api/holerites/meus-holerites?funcionarioId=${currentUser.id}`
+  console.log('🌐 [TESTE-HOLERITES] URL da API:', apiUrl)
+  
+  fetch(apiUrl)
+    .then(response => {
+      console.log('📊 [TESTE-HOLERITES] Status da resposta:', response.status)
+      console.log('📊 [TESTE-HOLERITES] Headers da resposta:', Object.fromEntries(response.headers.entries()))
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
-    }
-    
-  } catch (error) {
-    console.error('💥 [TESTE-HOLERITES] Erro no teste:', error)
-  }
+      
+      return response.json()
+    })
+    .then(holerites => {
+      console.log('✅ [TESTE-HOLERITES] Holerites recebidos:', holerites)
+      console.log('📦 [TESTE-HOLERITES] Quantidade:', holerites?.length || 0)
+      
+      if (holerites && holerites.length > 0) {
+        console.log('📋 [TESTE-HOLERITES] Detalhes dos holerites:')
+        holerites.forEach((h, i) => {
+          console.log(`   ${i+1}. ID: ${h.id}`)
+          console.log(`      Status: ${h.status}`)
+          console.log(`      Período: ${h.periodo_inicio} a ${h.periodo_fim}`)
+          console.log(`      Valor: R$ ${h.salario_liquido || 'N/A'}`)
+          console.log(`      Disponível em: ${h.data_disponibilizacao || 'N/A'}`)
+          console.log('      ---')
+        })
+      } else {
+        console.log('⚠️ [TESTE-HOLERITES] Nenhum holerite encontrado')
+        console.log('💡 [TESTE-HOLERITES] Possíveis motivos:')
+        console.log('   - Holerites estão com status "gerado" (não aparecem)')
+        console.log('   - Funcionário não tem holerites cadastrados')
+        console.log('   - Problema de configuração em produção')
+      }
+    })
+    .catch(error => {
+      console.error('❌ [TESTE-HOLERITES] Erro ao buscar holerites:', error)
+      console.error('❌ [TESTE-HOLERITES] Detalhes do erro:', error.message)
+      
+      // Verificar se é erro de rede ou servidor
+      if (error.message.includes('Failed to fetch')) {
+        console.error('🌐 [TESTE-HOLERITES] Erro de rede - verifique a conexão')
+      } else if (error.message.includes('500')) {
+        console.error('🔧 [TESTE-HOLERITES] Erro interno do servidor - verifique logs')
+      } else if (error.message.includes('401')) {
+        console.error('🔐 [TESTE-HOLERITES] Erro de autenticação - usuário não autorizado')
+      }
+    })
 }
 
-// Executar teste
-testarHoleritesFuncionario()
+// Verificar também o ambiente
+console.log('🌍 [TESTE-HOLERITES] Ambiente atual:', window.location.hostname)
+console.log('🌍 [TESTE-HOLERITES] URL completa:', window.location.href)
 
-console.log('🔍 [TESTE-HOLERITES] Para testar novamente, execute: testarHoleritesFuncionario()')
+// Verificar se há dados no localStorage
+const authData = localStorage.getItem('auth-user')
+console.log('💾 [TESTE-HOLERITES] Dados de auth no localStorage:', authData ? 'Presentes' : 'Ausentes')
+
+// Verificar cookies
+console.log('🍪 [TESTE-HOLERITES] Cookies:', document.cookie || 'Nenhum cookie')
+
+console.log('🧪 [TESTE-HOLERITES] Teste concluído. Verifique os logs acima.')

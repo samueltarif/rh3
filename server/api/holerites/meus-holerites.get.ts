@@ -13,9 +13,22 @@ export default defineEventHandler(async (event) => {
   console.log('🔍 [MEUS-HOLERITES] Timestamp:', new Date().toISOString())
   console.log('🔍 [MEUS-HOLERITES] Query params:', query)
   console.log('🔍 [MEUS-HOLERITES] Funcionário ID:', funcionarioId)
-  console.log('🔍 [MEUS-HOLERITES] Headers da requisição:', getHeaders(event))
-  console.log('🔍 [MEUS-HOLERITES] URL Supabase:', supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING')
-  console.log('🔍 [MEUS-HOLERITES] Service Role Key:', serviceRoleKey ? 'PRESENTE' : 'MISSING')
+  console.log('🔍 [MEUS-HOLERITES] Environment:', process.env.NODE_ENV)
+  console.log('🔍 [MEUS-HOLERITES] Vercel URL:', process.env.VERCEL_URL)
+  console.log('🔍 [MEUS-HOLERITES] Runtime Config Public:', {
+    supabaseUrl: config.public.supabaseUrl ? `${config.public.supabaseUrl.substring(0, 30)}...` : 'MISSING',
+    supabaseKey: config.public.supabaseKey ? 'PRESENTE' : 'MISSING'
+  })
+  console.log('🔍 [MEUS-HOLERITES] Runtime Config Private:', {
+    serviceRoleKey: config.supabaseServiceRoleKey ? 'PRESENTE' : 'MISSING'
+  })
+  console.log('🔍 [MEUS-HOLERITES] URL final:', supabaseUrl)
+  console.log('🔍 [MEUS-HOLERITES] Key final:', serviceRoleKey ? 'PRESENTE' : 'MISSING')
+
+  // CORREÇÃO PRODUÇÃO: Headers CORS para Vercel
+  setHeader(event, 'Access-Control-Allow-Origin', '*')
+  setHeader(event, 'Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  setHeader(event, 'Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
   if (!funcionarioId) {
     console.error('❌ [MEUS-HOLERITES] Funcionário não identificado')
@@ -28,57 +41,118 @@ export default defineEventHandler(async (event) => {
   console.log('🔍 [MEUS-HOLERITES] Buscando holerites para funcionário ID:', funcionarioId)
 
   try {
-    // Buscar holerites usando SERVICE ROLE KEY para bypassar RLS
-    // IMPORTANTE: Apenas holerites com status "enviado" ou "visualizado" são retornados
-    // Holerites com status "gerado" NÃO aparecem no perfil do funcionário
-    const url = `${supabaseUrl}/rest/v1/holerites?funcionario_id=eq.${funcionarioId}&status=neq.gerado&select=*&order=periodo_inicio.desc`
-    console.log('🌐 [MEUS-HOLERITES] URL da requisição:', url)
-    
-    const headers = {
-      'apikey': serviceRoleKey,
-      'Authorization': `Bearer ${serviceRoleKey}`,
-      'Content-Type': 'application/json'
-    }
-    console.log('📋 [MEUS-HOLERITES] Headers:', {
-      'apikey': serviceRoleKey ? 'PRESENTE' : 'MISSING',
-      'Authorization': serviceRoleKey ? 'PRESENTE' : 'MISSING',
-      'Content-Type': 'application/json'
-    })
-    
-    console.log('📡 [MEUS-HOLERITES] Fazendo requisição para Supabase...')
-    const response = await fetch(url, { headers })
-
-    console.log('📊 [MEUS-HOLERITES] Status da resposta Supabase:', response.status)
-    console.log('📊 [MEUS-HOLERITES] Headers da resposta Supabase:', Object.fromEntries(response.headers.entries()))
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ [MEUS-HOLERITES] Erro ao buscar holerites:', errorText)
-      throw new Error('Erro ao buscar holerites')
+    // CORREÇÃO PRODUÇÃO: Verificar configurações do Supabase
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('❌ [MEUS-HOLERITES] Configurações do Supabase faltando!')
+      console.error('   Supabase URL:', supabaseUrl ? 'OK' : 'MISSING')
+      console.error('   Service Role Key:', serviceRoleKey ? 'OK' : 'MISSING')
+      console.error('   Variáveis de ambiente disponíveis:', Object.keys(process.env).filter(k => k.includes('SUPABASE')))
+      console.error('   Todas as variáveis de ambiente:', Object.keys(process.env))
+      
+      throw createError({
+        statusCode: 500,
+        message: 'Configuração do servidor incompleta - Verifique variáveis de ambiente no Vercel'
+      })
     }
 
-    const holerites = await response.json()
-    console.log('📦 [MEUS-HOLERITES] Holerites encontrados:', holerites?.length || 0)
-    console.log('📦 [MEUS-HOLERITES] Primeira resposta (sample):', holerites?.[0] ? JSON.stringify(holerites[0], null, 2) : 'NENHUM')
-    console.log('📦 [MEUS-HOLERITES] Status dos holerites:', holerites?.map(h => ({ id: h.id, status: h.status })) || [])
-    console.log('   ℹ️ [MEUS-HOLERITES] (Holerites com status "gerado" não são exibidos)')
+    // CORREÇÃO PRODUÇÃO: Múltiplas tentativas com diferentes filtros
+    const urls = [
+      // Primeira tentativa: apenas enviado e visualizado
+      `${supabaseUrl}/rest/v1/holerites?funcionario_id=eq.${funcionarioId}&status=in.(enviado,visualizado)&select=*&order=periodo_inicio.desc`,
+      // Segunda tentativa: todos exceto gerado
+      `${supabaseUrl}/rest/v1/holerites?funcionario_id=eq.${funcionarioId}&status=neq.gerado&select=*&order=periodo_inicio.desc`,
+      // Terceira tentativa: todos os holerites (para debug)
+      `${supabaseUrl}/rest/v1/holerites?funcionario_id=eq.${funcionarioId}&select=*&order=periodo_inicio.desc`
+    ]
 
-    // Verificar se há holerites com status "gerado" que não aparecem
-    try {
-      const todosHolerites = await fetch(
-        `${supabaseUrl}/rest/v1/holerites?funcionario_id=eq.${funcionarioId}&select=id,status&order=periodo_inicio.desc`,
-        { headers }
-      )
-      if (todosHolerites.ok) {
-        const todos = await todosHolerites.json()
-        const gerados = todos.filter(h => h.status === 'gerado')
-        if (gerados.length > 0) {
-          console.log(`⚠️ [MEUS-HOLERITES] ${gerados.length} holerite(s) com status "gerado" não exibidos:`, gerados.map(h => h.id))
-        }
-        console.log(`📊 [MEUS-HOLERITES] Total no banco: ${todos.length}, Exibidos: ${holerites?.length || 0}`)
+    let holerites = null
+    let lastError = null
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i]
+      console.log(`🌐 [MEUS-HOLERITES] Tentativa ${i + 1}/3 - URL:`, url)
+      
+      const headers = {
+        'apikey': serviceRoleKey,
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'Nuxt-Server-Production-V2',
+        'Accept': 'application/json',
+        'Prefer': 'return=representation'
       }
-    } catch (debugError) {
-      console.error('⚠️ [MEUS-HOLERITES] Erro no debug de status:', debugError)
+      
+      console.log(`📋 [MEUS-HOLERITES] Tentativa ${i + 1} - Headers:`, {
+        'apikey': serviceRoleKey ? `${serviceRoleKey.substring(0, 20)}...` : 'MISSING',
+        'Authorization': serviceRoleKey ? `Bearer ${serviceRoleKey.substring(0, 20)}...` : 'MISSING',
+        'Content-Type': 'application/json',
+        'User-Agent': 'Nuxt-Server-Production-V2'
+      })
+
+      try {
+        console.log(`📡 [MEUS-HOLERITES] Tentativa ${i + 1} - Iniciando requisição...`)
+        const startTime = Date.now()
+        
+        const response = await fetch(url, { 
+          headers,
+          method: 'GET'
+        })
+
+        const endTime = Date.now()
+        console.log(`⏱️ [MEUS-HOLERITES] Tentativa ${i + 1} - Tempo:`, `${endTime - startTime}ms`)
+        console.log(`📊 [MEUS-HOLERITES] Tentativa ${i + 1} - Status:`, response.status)
+        console.log(`📊 [MEUS-HOLERITES] Tentativa ${i + 1} - Status text:`, response.statusText)
+
+        if (response.ok) {
+          holerites = await response.json()
+          console.log(`✅ [MEUS-HOLERITES] Tentativa ${i + 1} - SUCESSO!`)
+          console.log(`📦 [MEUS-HOLERITES] Tentativa ${i + 1} - Holerites:`, holerites?.length || 0)
+          break // Sucesso, sair do loop
+        } else {
+          const errorText = await response.text()
+          lastError = `Status ${response.status}: ${errorText}`
+          console.error(`❌ [MEUS-HOLERITES] Tentativa ${i + 1} - Erro:`, lastError)
+          
+          // Se for erro 401/403, tentar próxima URL
+          if (response.status === 401 || response.status === 403) {
+            console.log(`🔄 [MEUS-HOLERITES] Tentativa ${i + 1} - Erro de auth, tentando próxima...`)
+            continue
+          } else {
+            // Para outros erros, falhar imediatamente
+            throw new Error(lastError)
+          }
+        }
+      } catch (fetchError: any) {
+        lastError = fetchError.message
+        console.error(`💥 [MEUS-HOLERITES] Tentativa ${i + 1} - Erro de fetch:`, fetchError)
+        
+        // Se for a última tentativa, relançar o erro
+        if (i === urls.length - 1) {
+          throw fetchError
+        }
+      }
+    }
+
+    // Se chegou aqui sem sucesso, lançar erro
+    if (holerites === null) {
+      throw new Error(`Todas as tentativas falharam. Último erro: ${lastError}`)
+    }
+
+    console.log('📦 [MEUS-HOLERITES] Resposta final recebida com sucesso')
+    console.log('📦 [MEUS-HOLERITES] Tipo da resposta:', typeof holerites)
+    console.log('📦 [MEUS-HOLERITES] É array?', Array.isArray(holerites))
+    console.log('📦 [MEUS-HOLERITES] Holerites encontrados:', holerites?.length || 0)
+    
+    if (holerites && holerites.length > 0) {
+      console.log('📦 [MEUS-HOLERITES] Primeiros 3 holerites:')
+      holerites.slice(0, 3).forEach((h, i) => {
+        console.log(`   ${i+1}. ID: ${h.id}, Status: ${h.status}, Período: ${h.periodo_inicio} a ${h.periodo_fim}`)
+      })
+    } else {
+      console.log('📦 [MEUS-HOLERITES] Nenhum holerite encontrado para o funcionário')
+      console.log('📦 [MEUS-HOLERITES] Verificar se:')
+      console.log('   - Funcionário tem holerites gerados')
+      console.log('   - Holerites têm status correto')
+      console.log('   - ID do funcionário está correto')
     }
 
     // Se há holerites, buscar dados do funcionário para notificação
@@ -86,7 +160,7 @@ export default defineEventHandler(async (event) => {
       try {
         const funcionarioResponse = await fetch(
           `${supabaseUrl}/rest/v1/funcionarios?id=eq.${funcionarioId}&select=id,nome_completo,email_login,email_pessoal`,
-          {
+          { 
             headers: {
               'apikey': serviceRoleKey,
               'Authorization': `Bearer ${serviceRoleKey}`,
@@ -119,19 +193,30 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    console.log('✅ [MEUS-HOLERITES] Retornando holerites:', holerites?.length || 0)
-    console.log('🔍 [MEUS-HOLERITES] === FIM DA REQUISIÇÃO ===')
+    console.log('✅ [MEUS-HOLERITES] === FIM DA REQUISIÇÃO ===')
+    console.log('✅ [MEUS-HOLERITES] Retornando', holerites?.length || 0, 'holerites')
+    
     return holerites || []
+    
   } catch (error: any) {
-    console.error('💥 [MEUS-HOLERITES] === ERRO NA REQUISIÇÃO ===')
-    console.error('💥 [MEUS-HOLERITES] Mensagem:', error.message)
-    console.error('💥 [MEUS-HOLERITES] Stack trace:', error.stack)
-    console.error('💥 [MEUS-HOLERITES] Erro completo:', JSON.stringify(error, null, 2))
+    console.error('💥 [MEUS-HOLERITES] === ERRO CRÍTICO ===')
     console.error('💥 [MEUS-HOLERITES] Timestamp:', new Date().toISOString())
+    console.error('💥 [MEUS-HOLERITES] Erro ao buscar holerites:', error)
+    console.error('💥 [MEUS-HOLERITES] Stack trace:', error.stack)
+    console.error('💥 [MEUS-HOLERITES] Mensagem:', error.message)
+    console.error('💥 [MEUS-HOLERITES] Status:', error.status || error.statusCode)
+    console.error('💥 [MEUS-HOLERITES] Data:', error.data)
+    console.error('💥 [MEUS-HOLERITES] Tipo do erro:', typeof error)
+    console.error('💥 [MEUS-HOLERITES] Nome do erro:', error.name)
+    
+    // CORREÇÃO PRODUÇÃO: Log adicional para debug
+    if (error.cause) {
+      console.error('💥 [MEUS-HOLERITES] Causa do erro:', error.cause)
+    }
     
     throw createError({
-      statusCode: 500,
-      message: error.message || 'Erro ao buscar holerites'
+      statusCode: error.statusCode || error.status || 500,
+      message: `Erro ao buscar holerites: ${error.message || 'Erro desconhecido'}`
     })
   }
 })

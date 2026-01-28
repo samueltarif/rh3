@@ -54,8 +54,16 @@ export const useNotifications = () => {
     }, 300)
   }
   
-  // Funções de conveniência
+  // Funções de conveniência com verificação de permissão
   const notifySuccess = (title: string, message?: string, duration?: number) => {
+    // CORREÇÃO: Só mostrar notificações administrativas para admins
+    if (isAdminNotification(title)) {
+      const { isAdmin } = useAuth()
+      if (!isAdmin.value) {
+        console.log('🔕 [NOTIFICATIONS] Notificação administrativa bloqueada para funcionário:', title)
+        return
+      }
+    }
     return addNotification({ title, message, variant: 'success', duration })
   }
   
@@ -64,11 +72,45 @@ export const useNotifications = () => {
   }
   
   const notifyWarning = (title: string, message?: string, duration?: number) => {
+    // CORREÇÃO: Só mostrar notificações administrativas para admins
+    if (isAdminNotification(title)) {
+      const { isAdmin } = useAuth()
+      if (!isAdmin.value) {
+        console.log('🔕 [NOTIFICATIONS] Notificação administrativa bloqueada para funcionário:', title)
+        return
+      }
+    }
     return addNotification({ title, message, variant: 'warning', duration })
   }
   
   const notifyInfo = (title: string, message?: string, duration?: number) => {
+    // CORREÇÃO: Só mostrar notificações administrativas para admins
+    if (isAdminNotification(title)) {
+      const { isAdmin } = useAuth()
+      if (!isAdmin.value) {
+        console.log('🔕 [NOTIFICATIONS] Notificação administrativa bloqueada para funcionário:', title)
+        return
+      }
+    }
     return addNotification({ title, message, variant: 'info', duration })
+  }
+  
+  // Função para verificar se é notificação administrativa
+  const isAdminNotification = (title: string): boolean => {
+    const adminKeywords = [
+      'Holerites Gerados',
+      'Holerites Disponibilizados',
+      'Folhas mensais Gerados',
+      'Adiantamentos Gerados',
+      'gerados',
+      'disponibilizados',
+      'Admin',
+      'Sistema'
+    ]
+    
+    return adminKeywords.some(keyword => 
+      title.toLowerCase().includes(keyword.toLowerCase())
+    )
   }
   
   return {
