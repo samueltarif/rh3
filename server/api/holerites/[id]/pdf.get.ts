@@ -1,4 +1,5 @@
 import { gerarHoleriteHTML } from '../../../utils/holeriteHTML'
+import { notificarDownloadHolerite } from '../../../utils/notifications'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -146,6 +147,13 @@ export default defineEventHandler(async (event) => {
 
     // Gerar HTML
     const html = gerarHoleriteHTML(holerite, funcionario, empresa)
+
+    // Criar notificação de download
+    await notificarDownloadHolerite(event, {
+      id: funcionario.id,
+      nome: funcionario.nome_completo,
+      email: funcionario.email_login || funcionario.email_pessoal
+    }, holerite, 'pdf')
 
     // Retornar HTML
     setResponseHeader(event, 'Content-Type', 'text/html; charset=utf-8')

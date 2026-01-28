@@ -62,6 +62,13 @@ export default defineEventHandler(async (event) => {
 
     console.log('📝 Campos a atualizar:', Object.keys(dadosParaAtualizar))
 
+    // Buscar dados atuais antes da alteração
+    const { data: dadosAtuais } = await supabase
+      .from('funcionarios')
+      .select('*')
+      .eq('id', id as string)
+      .single()
+
     // @ts-ignore - Supabase types issue with dynamic updates
     const { data, error } = await supabase
       .from('funcionarios')
@@ -80,13 +87,44 @@ export default defineEventHandler(async (event) => {
 
     console.log('✅ Funcionário atualizado:', funcionario?.id)
 
-    // Criar notificação para o admin sobre a alteração
-    const camposAlterados = Object.keys(dadosParaAtualizar)
-    if (camposAlterados.length > 0) {
+    // Identificar apenas os campos que realmente mudaram
+    const camposRealmenteAlterados: string[] = []
+    const valoresAnterioresReais: any = {}
+    const valoresNovosReais: any = {}
+
+    if (dadosAtuais) {
+      Object.keys(dadosParaAtualizar).forEach(campo => {
+        const valorAntigo = dadosAtuais[campo]
+        const valorNovo = dadosParaAtualizar[campo]
+        
+        // Função para normalizar valores para comparação
+        const normalizeValue = (value: any) => {
+          if (value === null || value === undefined || value === '') return null
+          if (typeof value === 'string') return value.trim()
+          if (typeof value === 'object') return JSON.stringify(value)
+          return String(value)
+        }
+        
+        const valorAntigoNormalizado = normalizeValue(valorAntigo)
+        const valorNovoNormalizado = normalizeValue(valorNovo)
+        
+        // Só considera alterado se os valores normalizados são diferentes
+        if (valorAntigoNormalizado !== valorNovoNormalizado) {
+          camposRealmenteAlterados.push(campo)
+          valoresAnterioresReais[campo] = valorAntigo
+          valoresNovosReais[campo] = valorNovo
+        }
+      })
+    }
+
+    console.log('📝 Campos realmente alterados:', camposRealmenteAlterados)
+
+    // Criar notificação apenas se houve alterações reais
+    if (camposRealmenteAlterados.length > 0) {
       await notificarAlteracaoDados(event, {
         id: funcionario.id,
         nome: funcionario.nome_completo || 'Funcionário'
-      }, camposAlterados, 'admin')
+      }, camposRealmenteAlterados, 'admin', valoresAnterioresReais, valoresNovosReais)
     }
 
     return {

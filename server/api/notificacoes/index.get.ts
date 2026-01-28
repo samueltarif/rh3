@@ -14,17 +14,25 @@ export default defineEventHandler(async (event) => {
     const apenas_nao_lidas = query.apenas_nao_lidas === 'true'
     const tipo = query.tipo as string
     const origem = query.origem as string
+    const ultimos_dias = Number(query.ultimos_dias) || 30
 
     console.log('📬 [NOTIFICACOES] Buscando notificações...')
-    console.log('📋 Filtros:', { limite, apenas_nao_lidas, tipo, origem })
+    console.log('📋 Filtros:', { limite, apenas_nao_lidas, tipo, origem, ultimos_dias })
 
-    // Construir query
+    // Construir query direta (sem RPC para evitar problemas)
     let queryBuilder = supabase
       .from('notificacoes')
       .select('*')
       .order('importante', { ascending: false }) // Importantes primeiro
-      .order('data_criacao', { ascending: false }) // Mais recentes primeiro
+      .order('created_at', { ascending: false }) // Mais recentes primeiro
       .limit(limite)
+
+    // Filtrar por data (últimos X dias)
+    if (ultimos_dias > 0) {
+      const dataLimite = new Date()
+      dataLimite.setDate(dataLimite.getDate() - ultimos_dias)
+      queryBuilder = queryBuilder.gte('created_at', dataLimite.toISOString())
+    }
 
     // Filtrar apenas não lidas
     if (apenas_nao_lidas) {
@@ -72,7 +80,8 @@ export default defineEventHandler(async (event) => {
         limite,
         apenas_nao_lidas,
         tipo,
-        origem
+        origem,
+        ultimos_dias
       }
     }
 

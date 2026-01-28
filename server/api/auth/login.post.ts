@@ -5,9 +5,23 @@ import { notificarLogin, criarNotificacaoAdmin } from '../../utils/notifications
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
 
 export default defineEventHandler(async (event) => {
+  const startTime = Date.now()
+  const requestId = Math.random().toString(36).substr(2, 9)
+  
+  console.log(`🔐 [${requestId}] INÍCIO - Nova tentativa de login`)
+  console.log(`🔐 [${requestId}] Timestamp: ${new Date().toISOString()}`)
+  console.log(`🔐 [${requestId}] URL: ${event.node.req.url}`)
+  console.log(`🔐 [${requestId}] Method: ${event.node.req.method}`)
+  console.log(`🔐 [${requestId}] Headers:`, Object.fromEntries(
+    Object.entries(event.node.req.headers).filter(([key]) => 
+      ['user-agent', 'referer', 'origin', 'x-forwarded-for'].includes(key.toLowerCase())
+    )
+  ))
+
   const { email, senha } = await readBody(event)
 
   if (!email || !senha) {
+    console.log(`🔐 [${requestId}] ERRO - Email ou senha não fornecidos`)
     throw createError({
       statusCode: 400,
       message: 'Email e senha são obrigatórios'
@@ -31,12 +45,12 @@ export default defineEventHandler(async (event) => {
   const serviceRoleKey = config.supabaseServiceRoleKey || config.public.supabaseKey
 
   try {
-    console.log('🔐 Tentativa de login:', { email, clientIP })
+    console.log(`🔐 [${requestId}] Tentativa de login:`, { email, clientIP })
     
     // Buscar funcionário apenas pelo email (incluindo ambas as colunas de senha)
     const url = `${supabaseUrl}/rest/v1/funcionarios?email_login=eq.${encodeURIComponent(email)}&status=eq.ativo&select=id,nome_completo,email_login,tipo_acesso,status,cargo_id,departamento_id,senha,senha_hash`
     
-    console.log('📡 URL da consulta:', url)
+    console.log(`🔐 [${requestId}] 📡 URL da consulta:`, url)
 
     const response = await fetch(url, {
       headers: {
@@ -47,13 +61,13 @@ export default defineEventHandler(async (event) => {
       }
     })
 
-    console.log('📊 Status da resposta:', response.status)
+    console.log(`🔐 [${requestId}] 📊 Status da resposta:`, response.status)
     
     const funcionarios = await response.json()
-    console.log('👥 Funcionários encontrados:', funcionarios.length)
+    console.log(`🔐 [${requestId}] 👥 Funcionários encontrados:`, funcionarios.length)
 
     if (!response.ok || !funcionarios || funcionarios.length === 0) {
-      console.log('⚠️ Nenhum funcionário encontrado ou erro na resposta:', funcionarios)
+      console.log(`🔐 [${requestId}] ⚠️ Nenhum funcionário encontrado ou erro na resposta:`, funcionarios)
       // Incrementar tentativas falhadas
       const currentAttempts = loginAttempts.get(clientIP) || { count: 0, lastAttempt: 0 }
       loginAttempts.set(clientIP, { count: currentAttempts.count + 1, lastAttempt: now })
@@ -65,16 +79,16 @@ export default defineEventHandler(async (event) => {
     }
 
     const funcionario = funcionarios[0]
-    console.log('👤 Funcionário encontrado:', { id: funcionario.id, nome: funcionario.nome_completo })
-    console.log('🔑 Tem senha_hash:', !!funcionario.senha_hash)
-    console.log('🔑 Tem senha:', !!funcionario.senha)
+    console.log(`🔐 [${requestId}] 👤 Funcionário encontrado:`, { id: funcionario.id, nome: funcionario.nome_completo })
+    console.log(`🔐 [${requestId}] 🔑 Tem senha_hash:`, !!funcionario.senha_hash)
+    console.log(`🔐 [${requestId}] 🔑 Tem senha:`, !!funcionario.senha)
     
     // Verificar senha com hash (prioriza senha_hash, fallback para senha)
     const senhaParaVerificar = funcionario.senha_hash || funcionario.senha
-    console.log('🔍 Verificando senha com:', senhaParaVerificar ? 'hash/senha encontrada' : 'NENHUMA SENHA')
+    console.log(`🔐 [${requestId}] 🔍 Verificando senha com:`, senhaParaVerificar ? 'hash/senha encontrada' : 'NENHUMA SENHA')
     
     const isValidPassword = await verifyPassword(senha, senhaParaVerificar)
-    console.log('✅ Senha válida:', isValidPassword)
+    console.log(`🔐 [${requestId}] ✅ Senha válida:`, isValidPassword)
     
     if (!isValidPassword) {
       // Incrementar tentativas falhadas
@@ -116,15 +130,17 @@ export default defineEventHandler(async (event) => {
     // Reset tentativas em caso de sucesso
     loginAttempts.delete(clientIP)
 
-    // Criar notificação de login para o admin (apenas se não for admin)
-    if (funcionario.tipo_acesso !== 'admin') {
-      await notificarLogin(event, {
-        id: funcionario.id,
-        nome: funcionario.nome_completo,
-        email: funcionario.email_login,
-        tipo: funcionario.tipo_acesso
-      }, clientIP)
-    }
+    console.log(`🔐 [${requestId}] 🎉 LOGIN SUCESSO - Criando notificação...`)
+
+    // Criar notificação de login para o admin
+    await notificarLogin(event, {
+      id: funcionario.id,
+      nome: funcionario.nome_completo,
+      email: funcionario.email_login,
+      tipo: funcionario.tipo_acesso
+    }, clientIP)
+
+    console.log(`🔐 [${requestId}] ✅ CONCLUÍDO - Tempo total: ${Date.now() - startTime}ms`)
 
     // Retornar dados do usuário (sem a senha_hash)
     return {
@@ -139,7 +155,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error: any) {
-    console.error('💥 Erro no login:', error)
+    console.error(`🔐 [${requestId}] 💥 Erro no login:`, error)
     
     if (error.statusCode) {
       throw error

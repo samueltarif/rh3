@@ -1,5 +1,6 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
 import { gerarHoleriteHTML } from '../../../utils/holeriteHTML'
+import { notificarDownloadHolerite } from '../../../utils/notifications'
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
@@ -106,6 +107,13 @@ export default defineEventHandler(async (event) => {
     }
 
     const html = gerarHoleriteHTML(holerite, funcionarioData, empresaData)
+
+    // Criar notificação de download
+    await notificarDownloadHolerite(event, {
+      id: funcionario.id,
+      nome: funcionario.nome_completo,
+      email: funcionario.email_login || funcionario.email_pessoal
+    }, holerite, 'html')
 
     // Retornar HTML como arquivo para download
     setHeader(event, 'Content-Type', 'text/html; charset=utf-8')

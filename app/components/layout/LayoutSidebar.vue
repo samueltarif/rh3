@@ -25,21 +25,30 @@
         </div>
         
         <!-- Botão de Notificações (Desktop) -->
-        <button 
-          @click="toggleNotifications"
-          class="w-full flex items-center gap-3 px-4 py-3 text-base font-medium rounded-xl transition-colors relative"
-          :class="[
-            showNotifications 
-              ? 'bg-blue-100 text-blue-700' 
-              : 'text-gray-700 hover:bg-gray-100'
-          ]"
+        <UiNotificationBadge 
+          :count="unreadCount" 
+          :pulse="hasUnreadNotifications"
+          size="md"
+          color="red"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM11 19H6.5A2.5 2.5 0 014 16.5v-9A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V11"/>
-          </svg>
-          <span>Notificações</span>
-          <!-- Badge removido - será mostrado apenas quando houver notificações reais -->
-        </button>
+          <button 
+            @click.stop="toggleNotifications"
+            class="w-full flex items-center gap-3 px-4 py-3 text-base font-medium rounded-xl transition-colors relative"
+            :class="[
+              showNotifications 
+                ? 'bg-blue-100 text-blue-700' 
+                : 'text-gray-700 hover:bg-gray-100'
+            ]"
+            :aria-label="notificationAriaLabel"
+            :aria-expanded="showNotifications"
+            aria-haspopup="true"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM11 19H6.5A2.5 2.5 0 014 16.5v-9A2.5 2.5 0 016.5 5h11A2.5 2.5 0 0120 7.5V11"/>
+            </svg>
+            <span>Notificações</span>
+          </button>
+        </UiNotificationBadge>
         
         <LayoutNavLink to="/admin/funcionarios" icon="users">Funcionários</LayoutNavLink>
         <LayoutNavLink to="/admin/jornadas" icon="clock">Jornadas de Trabalho</LayoutNavLink>
@@ -50,38 +59,11 @@
       </template>
     </nav>
 
-    <!-- Painel de Notificações (Desktop) -->
-    <div 
-      v-if="showNotifications && isAdmin"
-      class="fixed top-0 left-72 w-80 h-full bg-white border-r border-gray-200 shadow-xl overflow-hidden"
-      style="z-index: 9999;"
-    >
-      <div class="p-4 border-b border-gray-200 bg-white">
-        <div class="flex items-center justify-between">
-          <h3 class="font-semibold text-gray-900">📢 Notificações do Sistema</h3>
-          <button 
-            @click="showNotifications = false"
-            class="p-1 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      
-      <div class="flex-1 overflow-y-auto" style="height: calc(100vh - 80px);">
-        <AdminNotificationPanelSimple />
-      </div>
-    </div>
+    <!-- Painel de Notificações (Desktop) - REMOVIDO -->
+    <!-- Agora usa o NotificationsDrawer com Teleport -->
 
-    <!-- Overlay para fechar notificações ao clicar fora -->
-    <div 
-      v-if="showNotifications && isAdmin"
-      @click="showNotifications = false"
-      class="fixed inset-0 bg-black bg-opacity-25"
-      style="z-index: 9998;"
-    ></div>
+    <!-- Overlay para fechar notificações ao clicar fora - REMOVIDO -->
+    <!-- Gerenciado pelo NotificationsDrawer -->
 
     <!-- Usuário Logado -->
     <div class="p-4 border-t border-gray-200">
@@ -106,24 +88,63 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   user: any
   isAdmin: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   logout: []
 }>()
 
+// Debug: Verificar props
+console.log('🔔 [SIDEBAR] Props recebidas:', { user: props.user?.nome, isAdmin: props.isAdmin })
+
 const { logout } = useAuth()
 
-// Estado das notificações
-const showNotifications = ref(false)
-// unreadCount removido - será obtido da API real quando implementado
+// Sistema de notificações
+const {
+  unreadCount,
+  hasUnreadNotifications,
+  ariaLabel: notificationAriaLabel,
+  startPolling,
+  stopPolling,
+  refresh: refreshNotifications
+} = useNotificationCount()
 
-const toggleNotifications = () => {
+// Estado das notificações (compartilhado globalmente)
+const showNotifications = useState('notifications-open', () => false)
+
+const toggleNotifications = async () => {
+  console.log('🔔 [SIDEBAR] === INÍCIO DO TOGGLE ===')
+  console.log('🔔 [SIDEBAR] Estado ANTES:', showNotifications.value)
+  console.log('🔔 [SIDEBAR] isAdmin:', props.isAdmin)
+  
+  const oldValue = showNotifications.value
   showNotifications.value = !showNotifications.value
+  
+  console.log('🔔 [SIDEBAR] Estado DEPOIS:', showNotifications.value)
+  console.log('🔔 [SIDEBAR] Mudança:', oldValue, '->', showNotifications.value)
+  console.log('🔔 [SIDEBAR] Condição drawer:', showNotifications.value && props.isAdmin)
+  
+  // Aguardar um pouco e verificar se o estado permanece
+  setTimeout(() => {
+    console.log('🔔 [SIDEBAR] Estado após 100ms:', showNotifications.value)
+  }, 100)
+  
+  setTimeout(() => {
+    console.log('🔔 [SIDEBAR] Estado após 500ms:', showNotifications.value)
+  }, 500)
+  
+  // Atualizar contagem quando abrir o painel
+  if (showNotifications.value) {
+    await refreshNotifications()
+  }
+  
+  console.log('🔔 [SIDEBAR] === FIM DO TOGGLE ===')
 }
+
+// Métodos removidos - agora gerenciados pelo layout pai
 
 // Mapa para conversão de IDs para nomes de cargos
 const cargosMap = ref<Record<string, string>>({})
@@ -152,5 +173,28 @@ const carregarCargos = async () => {
 // Carregar dados ao montar
 onMounted(async () => {
   await carregarCargos()
+  
+  // Iniciar polling de notificações apenas para admins
+  if (props.isAdmin) {
+    console.log('🔔 [SIDEBAR] Iniciando polling para admin')
+    startPolling()
+  } else {
+    console.log('🔔 [SIDEBAR] Usuário não é admin, não iniciando polling')
+  }
+})
+
+// Watcher para debug - rastrear mudanças externas
+watch(() => showNotifications.value, (newValue, oldValue) => {
+  console.log('🔔 [SIDEBAR] WATCHER: showNotifications mudou:', oldValue, '->', newValue)
+  console.log('🔔 [SIDEBAR] WATCHER: isAdmin:', props.isAdmin)
+  console.log('🔔 [SIDEBAR] WATCHER: Condição drawer:', newValue && props.isAdmin)
+  
+  // Stack trace para ver quem está mudando o valor
+  console.trace('🔔 [SIDEBAR] WATCHER: Stack trace da mudança')
+})
+
+// Parar polling ao desmontar
+onUnmounted(() => {
+  stopPolling()
 })
 </script>

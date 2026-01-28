@@ -20,9 +20,17 @@ export async function criarNotificacaoAdmin(
   notificationData: NotificationData
 ) {
   try {
+    console.log('📬 [NOTIFICACAO-AUTO] Iniciando criação de notificação...')
+    console.log('📋 Dados da notificação:', notificationData)
+    
     const config = useRuntimeConfig()
     const supabaseUrl = config.public.supabaseUrl
     const serviceRoleKey = config.supabaseServiceRoleKey || config.public.supabaseKey
+
+    console.log('🔑 Configurações:', { 
+      supabaseUrl: supabaseUrl ? 'OK' : 'MISSING',
+      serviceRoleKey: serviceRoleKey ? 'OK' : 'MISSING'
+    })
 
     const dadosNotificacao = {
       titulo: notificationData.titulo,
@@ -36,6 +44,7 @@ export async function criarNotificacaoAdmin(
     }
 
     console.log('📬 [NOTIFICACAO-AUTO] Criando notificação:', dadosNotificacao.titulo)
+    console.log('📦 Payload completo:', JSON.stringify(dadosNotificacao, null, 2))
 
     const response = await fetch(`${supabaseUrl}/rest/v1/notificacoes`, {
       method: 'POST',
@@ -48,18 +57,23 @@ export async function criarNotificacaoAdmin(
       body: JSON.stringify(dadosNotificacao)
     })
 
+    console.log('📊 Status da resposta:', response.status)
+
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ Erro ao criar notificação automática:', errorText)
+      console.error('📋 Response headers:', Object.fromEntries(response.headers.entries()))
       return false
     }
 
     const notificacao = await response.json()
     console.log('✅ Notificação automática criada:', notificacao[0]?.id)
+    console.log('📋 Resposta completa:', JSON.stringify(notificacao, null, 2))
     return true
 
   } catch (error: any) {
     console.error('💥 Erro ao criar notificação automática:', error.message)
+    console.error('📋 Stack trace:', error.stack)
     return false
   }
 }
@@ -100,7 +114,9 @@ export async function notificarAlteracaoDados(
   event: any, 
   funcionario: any, 
   camposAlterados: string[],
-  tipoAlteracao: 'proprio' | 'admin' = 'proprio'
+  tipoAlteracao: 'proprio' | 'admin' = 'proprio',
+  valoresAnteriores?: any,
+  valoresNovos?: any
 ) {
   const agora = new Date().toLocaleString('pt-BR', { 
     timeZone: 'America/Sao_Paulo',
@@ -111,12 +127,88 @@ export async function notificarAlteracaoDados(
     minute: '2-digit'
   })
 
-  const camposTexto = camposAlterados.join(', ')
+  // Mapear nomes técnicos para nomes amigáveis
+  const nomesCampos: { [key: string]: string } = {
+    nome_completo: 'Nome Completo',
+    cpf: 'CPF',
+    rg: 'RG',
+    data_nascimento: 'Data de Nascimento',
+    sexo: 'Sexo',
+    telefone: 'Telefone',
+    email_pessoal: 'Email Pessoal',
+    email_login: 'Email de Login',
+    empresa_id: 'Empresa',
+    departamento_id: 'Departamento',
+    cargo_id: 'Cargo',
+    jornada_trabalho_id: 'Jornada de Trabalho',
+    responsavel_id: 'Responsável',
+    tipo_contrato: 'Tipo de Contrato',
+    data_admissao: 'Data de Admissão',
+    matricula: 'Matrícula',
+    senha: 'Senha',
+    tipo_acesso: 'Tipo de Acesso',
+    status: 'Status',
+    salario_base: 'Salário Base',
+    numero_dependentes: 'Número de Dependentes',
+    tipo_salario: 'Tipo de Salário',
+    banco: 'Banco',
+    agencia: 'Agência',
+    conta: 'Conta',
+    tipo_conta: 'Tipo de Conta',
+    forma_pagamento: 'Forma de Pagamento',
+    chave_pix: 'Chave PIX',
+    pis_pasep: 'PIS/PASEP',
+    pensao_alimenticia: 'Pensão Alimentícia',
+    avatar: 'Avatar',
+    endereco: 'Endereço',
+    cep: 'CEP',
+    cidade: 'Cidade',
+    estado: 'Estado'
+  }
+
+  // Criar lista detalhada das alterações
+  const alteracoesDetalhadas = camposAlterados.map(campo => {
+    const nomeAmigavel = nomesCampos[campo] || campo
+    let detalhes = nomeAmigavel
+
+    // Se temos valores anteriores e novos, mostrar a mudança
+    if (valoresAnteriores && valoresNovos && valoresAnteriores[campo] !== undefined) {
+      const valorAnterior = valoresAnteriores[campo]
+      const valorNovo = valoresNovos[campo]
+      
+      // Para campos sensíveis, não mostrar o valor
+      if (['senha', 'senha_hash'].includes(campo)) {
+        detalhes = `${nomeAmigavel}: senha alterada`
+      } else if (campo === 'salario_base') {
+        const salAnt = valorAnterior ? Number(valorAnterior).toFixed(2) : '0.00'
+        const salNovo = valorNovo ? Number(valorNovo).toFixed(2) : '0.00'
+        detalhes = `${nomeAmigavel}: R$ ${salAnt} → R$ ${salNovo}`
+      } else if (campo.includes('data_')) {
+        const dataAnt = valorAnterior ? new Date(valorAnterior).toLocaleDateString('pt-BR') : '(vazio)'
+        const dataNova = valorNovo ? new Date(valorNovo).toLocaleDateString('pt-BR') : '(vazio)'
+        detalhes = `${nomeAmigavel}: ${dataAnt} → ${dataNova}`
+      } else if (campo === 'beneficios' || campo === 'descontos_personalizados') {
+        // Para objetos complexos, mostrar apenas que foi alterado
+        detalhes = `${nomeAmigavel}: configuração alterada`
+      } else if (typeof valorAnterior === 'object' || typeof valorNovo === 'object') {
+        // Para outros objetos, mostrar apenas que foi alterado
+        detalhes = `${nomeAmigavel}: dados alterados`
+      } else {
+        const valAnt = valorAnterior === null || valorAnterior === undefined ? '(vazio)' : String(valorAnterior)
+        const valNovo = valorNovo === null || valorNovo === undefined ? '(vazio)' : String(valorNovo)
+        detalhes = `${nomeAmigavel}: "${valAnt}" → "${valNovo}"`
+      }
+    }
+
+    return detalhes
+  })
+
   const acao = tipoAlteracao === 'proprio' ? 'alterou seus próprios dados' : 'teve seus dados alterados pelo admin'
+  const alteracoesTexto = alteracoesDetalhadas.join('; ')
   
   await criarNotificacaoAdmin(event, {
     titulo: '✏️ Alteração de Dados',
-    mensagem: `${funcionario.nome} ${acao} em ${agora}. Campos: ${camposTexto}`,
+    mensagem: `${funcionario.nome} ${acao} em ${agora}. Alterações: ${alteracoesTexto}`,
     tipo: 'warning',
     origem: 'alteracao_dados',
     importante: true,
@@ -124,6 +216,9 @@ export async function notificarAlteracaoDados(
       funcionario_id: funcionario.id,
       funcionario_nome: funcionario.nome,
       campos_alterados: camposAlterados,
+      alteracoes_detalhadas: alteracoesDetalhadas,
+      valores_anteriores: valoresAnteriores,
+      valores_novos: valoresNovos,
       tipo_alteracao: tipoAlteracao,
       timestamp: new Date().toISOString()
     },
@@ -200,6 +295,113 @@ export async function notificarGeracaoHolerites(
   })
 }
 
+/**
+ * Cria notificação para visualização de holerite
+ */
+export async function notificarVisualizacaoHolerite(
+  event: any,
+  funcionario: any,
+  holerite: any
+) {
+  const agora = new Date().toLocaleString('pt-BR', { 
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+
+  const periodoInicio = new Date(holerite.periodo_inicio)
+  const periodoFim = new Date(holerite.periodo_fim)
+  const mesAno = periodoInicio.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  
+  // Determinar tipo de holerite
+  let tipoHolerite = 'mensal'
+  if (periodoInicio.getDate() === 15) {
+    tipoHolerite = 'adiantamento'
+  } else if (periodoInicio.getDate() === 1 && periodoFim.getDate() <= 15) {
+    tipoHolerite = '1ª quinzena'
+  } else if (periodoInicio.getDate() === 16) {
+    tipoHolerite = '2ª quinzena'
+  }
+
+  await criarNotificacaoAdmin(event, {
+    titulo: '👁️ Holerite Visualizado',
+    mensagem: `${funcionario.nome} visualizou seu holerite (${tipoHolerite}) de ${mesAno} em ${agora}`,
+    tipo: 'info',
+    origem: 'visualizacao_holerite',
+    dados: {
+      funcionario_id: funcionario.id,
+      funcionario_nome: funcionario.nome,
+      funcionario_email: funcionario.email,
+      holerite_id: holerite.id,
+      periodo: mesAno,
+      tipo_holerite: tipoHolerite,
+      periodo_inicio: holerite.periodo_inicio,
+      periodo_fim: holerite.periodo_fim,
+      salario_liquido: holerite.salario_liquido,
+      timestamp: new Date().toISOString()
+    },
+    acao_url: `/admin/holerites`
+  })
+}
+
+/**
+ * Cria notificação para download de holerite
+ */
+export async function notificarDownloadHolerite(
+  event: any,
+  funcionario: any,
+  holerite: any,
+  formato: 'html' | 'pdf' = 'html'
+) {
+  const agora = new Date().toLocaleString('pt-BR', { 
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+
+  const periodoInicio = new Date(holerite.periodo_inicio)
+  const periodoFim = new Date(holerite.periodo_fim)
+  const mesAno = periodoInicio.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  
+  // Determinar tipo de holerite
+  let tipoHolerite = 'mensal'
+  if (periodoInicio.getDate() === 15) {
+    tipoHolerite = 'adiantamento'
+  } else if (periodoInicio.getDate() === 1 && periodoFim.getDate() <= 15) {
+    tipoHolerite = '1ª quinzena'
+  } else if (periodoInicio.getDate() === 16) {
+    tipoHolerite = '2ª quinzena'
+  }
+
+  const formatoTexto = formato.toUpperCase()
+
+  await criarNotificacaoAdmin(event, {
+    titulo: '📥 Holerite Baixado',
+    mensagem: `${funcionario.nome} baixou seu holerite (${tipoHolerite}) de ${mesAno} em formato ${formatoTexto} em ${agora}`,
+    tipo: 'info',
+    origem: 'download_holerite',
+    dados: {
+      funcionario_id: funcionario.id,
+      funcionario_nome: funcionario.nome,
+      funcionario_email: funcionario.email,
+      holerite_id: holerite.id,
+      periodo: mesAno,
+      tipo_holerite: tipoHolerite,
+      formato: formato,
+      periodo_inicio: holerite.periodo_inicio,
+      periodo_fim: holerite.periodo_fim,
+      salario_liquido: holerite.salario_liquido,
+      timestamp: new Date().toISOString()
+    },
+    acao_url: `/admin/holerites`
+  })
+}
 /**
  * Cria notificação para erros críticos
  */

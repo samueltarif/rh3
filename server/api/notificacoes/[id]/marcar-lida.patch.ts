@@ -16,30 +16,30 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.log(`📬 [MARCAR-LIDA] Marcando notificação ${id} como lida...`)
+    console.log('📬 [MARCAR-LIDA] Marcando notificação como lida:', id)
 
-    // Marcar como lida usando a função do banco
+    // Marcar como lida
     const { data, error } = await supabase
-      .rpc('marcar_notificacao_lida', { notificacao_uuid: id })
+      .from('notificacoes')
+      .update({ 
+        lida: true, 
+        data_leitura: new Date().toISOString() 
+      })
+      .eq('id', id)
+      .select()
+      .single()
 
     if (error) {
       console.error('❌ Erro ao marcar notificação como lida:', error)
       throw error
     }
 
-    if (!data) {
-      throw createError({
-        statusCode: 404,
-        message: 'Notificação não encontrada'
-      })
-    }
-
-    console.log(`✅ Notificação ${id} marcada como lida`)
+    console.log('✅ Notificação marcada como lida:', id)
 
     return {
       success: true,
       message: 'Notificação marcada como lida',
-      id: id
+      notificacao: data
     }
 
   } catch (error: any) {

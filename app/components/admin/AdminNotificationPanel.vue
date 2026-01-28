@@ -57,6 +57,12 @@
         </button>
       </div>
     </div>
+    
+    <!-- Modal de Todas as Notificações -->
+    <AdminNotificationModal 
+      :is-open="showModal" 
+      @close="closeModal" 
+    />
   </div>
 </template>
 
@@ -72,17 +78,14 @@ interface Notificacao {
 
 // Buscar notificações reais da API
 const { data: response, pending, refresh } = await useLazyFetch('/api/notificacoes', {
-  query: { limite: 5, admin: true },
+  query: { limite: 5 },
   default: () => ({ notificacoes: [], success: false }),
   server: false, // Forçar execução no cliente
   key: 'admin-notifications' // Chave única para cache
 })
 
 const notificacoes = computed(() => {
-  console.log('🔔 [DEBUG] Response:', response.value)
-  const result = response.value?.success ? response.value.notificacoes : []
-  console.log('🔔 [DEBUG] Notificações processadas:', result)
-  return result
+  return response.value?.success ? response.value.notificacoes : []
 })
 
 // Funções auxiliares
@@ -99,7 +102,9 @@ const getNotificationIcon = (tipo: string) => {
     geracao_holerites: '💰',
     envio_email: '📧',
     login_falhado: '🚨',
-    erro_sistema: '💥'
+    erro_sistema: '💥',
+    visualizacao_holerite: '👁️',
+    download_holerite: '📥'
   }
   return icons[tipo as keyof typeof icons] || 'ℹ️'
 }
@@ -117,7 +122,9 @@ const getNotificationStyle = (tipo: string) => {
     geracao_holerites: { bg: 'bg-green-100', text: 'text-green-600', dot: 'bg-green-500' },
     envio_email: { bg: 'bg-blue-100', text: 'text-blue-600', dot: 'bg-blue-500' },
     login_falhado: { bg: 'bg-red-100', text: 'text-red-600', dot: 'bg-red-500' },
-    erro_sistema: { bg: 'bg-red-100', text: 'text-red-600', dot: 'bg-red-500' }
+    erro_sistema: { bg: 'bg-red-100', text: 'text-red-600', dot: 'bg-red-500' },
+    visualizacao_holerite: { bg: 'bg-purple-100', text: 'text-purple-600', dot: 'bg-purple-500' },
+    download_holerite: { bg: 'bg-indigo-100', text: 'text-indigo-600', dot: 'bg-indigo-500' }
   }
   return styles[tipo as keyof typeof styles] || styles.info
 }
@@ -139,8 +146,15 @@ const formatarTempo = (data: string) => {
 }
 
 const verTodasNotificacoes = () => {
-  // Navegar para página de notificações ou abrir modal
-  navigateTo('/admin/notificacoes')
+  // Abrir modal de notificações
+  showModal.value = true
+}
+
+// Estado do modal
+const showModal = ref(false)
+
+const closeModal = () => {
+  showModal.value = false
 }
 
 // Auto-refresh a cada 30 segundos

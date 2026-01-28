@@ -23,6 +23,43 @@ export default {
           900: '#1e3a8a',
         }
       },
+      zIndex: {
+        // Base levels
+        '1': '1',
+        '2': '2',
+        '3': '3',
+        
+        // Elevated elements
+        '100': '100',
+        '110': '110',
+        '120': '120',
+        
+        // Overlay elements
+        '200': '200',
+        '210': '210',
+        
+        // Modal system
+        '1000': '1000',
+        '1010': '1010',
+        
+        // Notification system
+        '1100': '1100',
+        
+        // Critical system
+        '9000': '9000',
+        '9100': '9100',
+        '9200': '9200',
+        '9999': '9999',
+      },
+      height: {
+        'dvh': '100dvh', // Dynamic viewport height
+      },
+      maxHeight: {
+        'dvh': '100dvh',
+      },
+      minHeight: {
+        'dvh': '100dvh',
+      }
     }
   },
   plugins: [],

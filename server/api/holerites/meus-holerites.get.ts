@@ -1,3 +1,5 @@
+import { notificarVisualizacaoHolerite } from '../../utils/notifications'
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const supabaseUrl = config.public.supabaseUrl
@@ -50,6 +52,44 @@ export default defineEventHandler(async (event) => {
     console.log('📦 [MEUS-HOLERITES] Holerites encontrados:', holerites.length)
     console.log('📦 [MEUS-HOLERITES] Dados dos holerites:', JSON.stringify(holerites, null, 2))
     console.log('   (Holerites com status "gerado" não são exibidos)')
+
+    // Se há holerites, buscar dados do funcionário para notificação
+    if (holerites && holerites.length > 0) {
+      try {
+        const funcionarioResponse = await fetch(
+          `${supabaseUrl}/rest/v1/funcionarios?id=eq.${funcionarioId}&select=id,nome_completo,email_login,email_pessoal`,
+          {
+            headers: {
+              'apikey': serviceRoleKey,
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        )
+
+        if (funcionarioResponse.ok) {
+          const funcionarios = await funcionarioResponse.json()
+          if (funcionarios && funcionarios.length > 0) {
+            const funcionario = funcionarios[0]
+            
+            // Criar notificação apenas se há holerites para visualizar
+            await notificarVisualizacaoHolerite(event, {
+              id: funcionario.id,
+              nome: funcionario.nome_completo,
+              email: funcionario.email_login || funcionario.email_pessoal
+            }, { 
+              id: 'lista',
+              periodo_inicio: new Date().toISOString(),
+              periodo_fim: new Date().toISOString(),
+              total_holerites: holerites.length
+            })
+          }
+        }
+      } catch (notificationError) {
+        console.error('⚠️ [MEUS-HOLERITES] Erro ao criar notificação:', notificationError)
+        // Não falhar a requisição por causa da notificação
+      }
+    }
 
     return holerites || []
   } catch (error: any) {
