@@ -127,7 +127,13 @@ const toggleNotifications = async () => {
   console.log('🔔 [SIDEBAR] Mudança:', oldValue, '->', showNotifications.value)
   console.log('🔔 [SIDEBAR] Condição drawer:', showNotifications.value && props.isAdmin)
   
-  // Aguardar um pouco e verificar se o estado permanece
+  // SEMPRE atualizar contagem quando abrir o painel
+  if (showNotifications.value) {
+    console.log('🔄 [SIDEBAR] Atualizando contagem de notificações...')
+    await refreshNotifications()
+  }
+  
+  // Aguardar um pouco para garantir que o layout processe a mudança
   setTimeout(() => {
     console.log('🔔 [SIDEBAR] Estado após 100ms:', showNotifications.value)
   }, 100)
@@ -135,11 +141,6 @@ const toggleNotifications = async () => {
   setTimeout(() => {
     console.log('🔔 [SIDEBAR] Estado após 500ms:', showNotifications.value)
   }, 500)
-  
-  // Atualizar contagem quando abrir o painel
-  if (showNotifications.value) {
-    await refreshNotifications()
-  }
   
   console.log('🔔 [SIDEBAR] === FIM DO TOGGLE ===')
 }

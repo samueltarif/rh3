@@ -317,8 +317,9 @@ const toggleNotifications = async () => {
   console.log('🔔 [LAYOUT-MOBILE] Mudança:', oldValue, '->', showNotifications.value)
   console.log('🔔 [LAYOUT-MOBILE] Condição drawer:', showNotifications.value && isAdmin.value)
   
-  // Carregar notificações quando abrir
+  // SEMPRE carregar notificações quando abrir (corrigir bug)
   if (showNotifications.value) {
+    console.log('🔄 [LAYOUT-MOBILE] Carregando notificações automaticamente...')
     await carregarNotificacoes()
     await refreshNotifications()
   }
@@ -454,14 +455,26 @@ const formatarOrigem = (origem: string) => {
   return origens[origem as keyof typeof origens] || origem
 }
 
-// Watcher para debug no layout
-watch(() => showNotifications.value, (newValue, oldValue) => {
+// Carregar notificações ao montar o componente (se for admin)
+onMounted(async () => {
+  if (isAdmin.value) {
+    console.log('🔄 [LAYOUT] Carregando notificações iniciais para admin...')
+    await carregarNotificacoes()
+    await refreshNotifications()
+  }
+})
+watch(() => showNotifications.value, async (newValue, oldValue) => {
   console.log('🔔 [LAYOUT-MOBILE] WATCHER: showNotifications mudou:', oldValue, '->', newValue)
   console.log('🔔 [LAYOUT-MOBILE] WATCHER: isAdmin:', isAdmin.value)
   console.log('🔔 [LAYOUT-MOBILE] WATCHER: Drawer será exibido?', newValue && isAdmin.value)
   
   if (newValue && isAdmin.value) {
     console.log('✅ [LAYOUT-MOBILE] DRAWER DEVE APARECER AGORA!')
+    console.log('🔄 [LAYOUT-MOBILE] WATCHER: Carregando notificações automaticamente...')
+    
+    // Carregar notificações automaticamente quando abrir
+    await carregarNotificacoes()
+    await refreshNotifications()
   } else {
     console.log('❌ [LAYOUT-MOBILE] Drawer não deve aparecer')
   }

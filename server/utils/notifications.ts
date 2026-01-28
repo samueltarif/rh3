@@ -20,17 +20,21 @@ export async function criarNotificacaoAdmin(
   notificationData: NotificationData
 ) {
   try {
-    console.log('📬 [NOTIFICACAO-AUTO] Iniciando criação de notificação...')
-    console.log('📋 Dados da notificação:', notificationData)
+    console.log('📬 [NOTIFICACAO-AUTO] === INÍCIO DA CRIAÇÃO ===')
+    console.log('📋 Dados da notificação:', JSON.stringify(notificationData, null, 2))
     
     const config = useRuntimeConfig()
     const supabaseUrl = config.public.supabaseUrl
     const serviceRoleKey = config.supabaseServiceRoleKey || config.public.supabaseKey
 
-    console.log('🔑 Configurações:', { 
-      supabaseUrl: supabaseUrl ? 'OK' : 'MISSING',
-      serviceRoleKey: serviceRoleKey ? 'OK' : 'MISSING'
-    })
+    console.log('🔑 Configurações Supabase:')
+    console.log('   URL:', supabaseUrl ? `${String(supabaseUrl).substring(0, 30)}...` : 'MISSING')
+    console.log('   Service Role Key:', serviceRoleKey ? `${String(serviceRoleKey).substring(0, 30)}...` : 'MISSING')
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('❌ [NOTIFICACAO-AUTO] Configurações do Supabase estão faltando!')
+      return false
+    }
 
     const dadosNotificacao = {
       titulo: notificationData.titulo,
@@ -40,40 +44,70 @@ export async function criarNotificacaoAdmin(
       dados: notificationData.dados || {},
       importante: notificationData.importante || false,
       acao_url: notificationData.acao_url || null,
-      data_expiracao: null
+      data_expiracao: null,
+      lida: false,
+      created_at: new Date().toISOString()
     }
 
-    console.log('📬 [NOTIFICACAO-AUTO] Criando notificação:', dadosNotificacao.titulo)
-    console.log('📦 Payload completo:', JSON.stringify(dadosNotificacao, null, 2))
+    console.log('📦 [NOTIFICACAO-AUTO] Payload final:', JSON.stringify(dadosNotificacao, null, 2))
 
-    const response = await fetch(`${supabaseUrl}/rest/v1/notificacoes`, {
+    const url = `${supabaseUrl}/rest/v1/notificacoes`
+    console.log('🌐 [NOTIFICACAO-AUTO] URL da requisição:', url)
+
+    const headers = {
+      'apikey': serviceRoleKey,
+      'Authorization': `Bearer ${serviceRoleKey}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    }
+
+    console.log('📋 [NOTIFICACAO-AUTO] Headers:', {
+      'apikey': serviceRoleKey ? `${String(serviceRoleKey).substring(0, 20)}...` : 'MISSING',
+      'Authorization': serviceRoleKey ? `Bearer ${String(serviceRoleKey).substring(0, 20)}...` : 'MISSING',
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    })
+
+    console.log('📡 [NOTIFICACAO-AUTO] Fazendo requisição para Supabase...')
+
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'apikey': serviceRoleKey,
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
-      },
+      headers: headers,
       body: JSON.stringify(dadosNotificacao)
     })
 
-    console.log('📊 Status da resposta:', response.status)
+    console.log('📊 [NOTIFICACAO-AUTO] Status da resposta:', response.status)
+    console.log('📊 [NOTIFICACAO-AUTO] Status text:', response.statusText)
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Erro ao criar notificação automática:', errorText)
-      console.error('📋 Response headers:', Object.fromEntries(response.headers.entries()))
+      console.error('❌ [NOTIFICACAO-AUTO] Erro na resposta:', errorText)
+      console.error('📋 [NOTIFICACAO-AUTO] Response headers:', Object.fromEntries(response.headers.entries()))
+      
+      // Tentar parsear o erro como JSON
+      try {
+        const errorJson = JSON.parse(errorText)
+        console.error('📋 [NOTIFICACAO-AUTO] Erro JSON:', errorJson)
+      } catch (e) {
+        console.error('📋 [NOTIFICACAO-AUTO] Erro não é JSON válido')
+      }
+      
       return false
     }
 
     const notificacao = await response.json()
-    console.log('✅ Notificação automática criada:', notificacao[0]?.id)
-    console.log('📋 Resposta completa:', JSON.stringify(notificacao, null, 2))
+    console.log('✅ [NOTIFICACAO-AUTO] Notificação criada com sucesso!')
+    console.log('📋 [NOTIFICACAO-AUTO] ID da notificação:', notificacao[0]?.id)
+    console.log('📋 [NOTIFICACAO-AUTO] Resposta completa:', JSON.stringify(notificacao, null, 2))
+    console.log('📬 [NOTIFICACAO-AUTO] === FIM DA CRIAÇÃO ===')
+    
     return true
 
   } catch (error: any) {
-    console.error('💥 Erro ao criar notificação automática:', error.message)
-    console.error('📋 Stack trace:', error.stack)
+    console.error('💥 [NOTIFICACAO-AUTO] === ERRO NA CRIAÇÃO ===')
+    console.error('💥 [NOTIFICACAO-AUTO] Mensagem:', error.message)
+    console.error('💥 [NOTIFICACAO-AUTO] Stack:', error.stack)
+    console.error('💥 [NOTIFICACAO-AUTO] Erro completo:', error)
     return false
   }
 }

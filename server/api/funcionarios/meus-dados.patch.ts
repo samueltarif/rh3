@@ -168,10 +168,20 @@ export default defineEventHandler(async (event) => {
 
     // Criar notificação apenas se houve alterações reais
     if (camposRealmenteAlterados.length > 0) {
-      await notificarAlteracaoDados(event, {
-        id: userId,
-        nome: funcionarioAtualizado[0]?.nome_completo || 'Funcionário'
-      }, camposRealmenteAlterados, 'proprio', valoresAnterioresReais, valoresNovosReais)
+      console.log('📬 [FUNCIONARIOS-API] Criando notificação para alterações:', camposRealmenteAlterados)
+      
+      try {
+        await notificarAlteracaoDados(event, {
+          id: userId,
+          nome: funcionarioAtualizado[0]?.nome_completo || 'Funcionário'
+        }, camposRealmenteAlterados, 'proprio', valoresAnterioresReais, valoresNovosReais)
+        
+        console.log('✅ [FUNCIONARIOS-API] Notificação criada com sucesso!')
+      } catch (notifError) {
+        console.error('❌ [FUNCIONARIOS-API] Erro ao criar notificação:', notifError)
+      }
+    } else {
+      console.log('ℹ️ [FUNCIONARIOS-API] Nenhuma alteração real detectada, não criando notificação')
     }
 
     return {
