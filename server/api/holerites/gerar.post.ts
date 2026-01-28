@@ -1,5 +1,6 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
 import { calcularINSS2026 } from '../../utils/inss2026'
+import { notificarGeracaoHolerites } from '../../utils/notifications'
 
 // ========================================
 // FUNÇÕES AUXILIARES PARA CÁLCULO DE DATAS
@@ -598,6 +599,11 @@ export default defineEventHandler(async (event) => {
           erro: error.message
         })
       }
+    }
+
+    // Criar notificação para o admin sobre geração de holerites
+    if (holeritesCriados.length > 0) {
+      await notificarGeracaoHolerites(event, tipo, holeritesCriados.length)
     }
 
     return {

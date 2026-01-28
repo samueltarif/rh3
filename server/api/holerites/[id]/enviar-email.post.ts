@@ -1,4 +1,5 @@
 import { enviarEmail } from '../../../utils/email'
+import { criarNotificacaoAdmin } from '../../../utils/notifications'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -150,6 +151,33 @@ export default defineEventHandler(async (event) => {
     }
 
     console.log('✅ Email enviado com sucesso!')
+
+    // Criar notificação para o admin sobre envio de email
+    const agora = new Date().toLocaleString('pt-BR', { 
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+
+    await criarNotificacaoAdmin(event, {
+      titulo: '📧 Holerite Enviado',
+      mensagem: `Holerite de ${funcionario.nome_completo} (${mesAno}) enviado por email em ${agora}`,
+      tipo: 'success',
+      origem: 'envio_email',
+      dados: {
+        funcionario_id: funcionario.id,
+        funcionario_nome: funcionario.nome_completo,
+        funcionario_email: emailDestino,
+        holerite_id: holerite.id,
+        periodo: mesAno,
+        tipo_holerite: tipoHolerite,
+        timestamp: new Date().toISOString()
+      },
+      acao_url: `/admin/holerites`
+    })
 
     // Atualizar status do holerite para "enviado"
     await fetch(

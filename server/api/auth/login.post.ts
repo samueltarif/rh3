@@ -1,4 +1,5 @@
 import { verifyPassword } from '../../utils/auth'
+import { notificarLogin, criarNotificacaoAdmin } from '../../utils/notifications'
 
 // Rate limiting simples (em produção, use Redis)
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
@@ -80,6 +81,32 @@ export default defineEventHandler(async (event) => {
       const currentAttempts = loginAttempts.get(clientIP) || { count: 0, lastAttempt: 0 }
       loginAttempts.set(clientIP, { count: currentAttempts.count + 1, lastAttempt: now })
       
+      // Notificar admin sobre tentativa de login falhada (após 3 tentativas)
+      if (currentAttempts.count >= 2) {
+        const agora = new Date().toLocaleString('pt-BR', { 
+          timeZone: 'America/Sao_Paulo',
+          day: '2-digit',
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+
+        await criarNotificacaoAdmin(event, {
+          titulo: '🚨 Tentativas de Login Suspeitas',
+          mensagem: `Múltiplas tentativas de login falhadas para ${email} em ${agora} (IP: ${clientIP})`,
+          tipo: 'warning',
+          origem: 'login_falhado',
+          importante: true,
+          dados: {
+            email_tentativa: email,
+            ip: clientIP,
+            tentativas: currentAttempts.count + 1,
+            timestamp: new Date().toISOString()
+          }
+        })
+      }
+      
       throw createError({
         statusCode: 401,
         message: 'Email ou senha incorretos'
@@ -88,6 +115,16 @@ export default defineEventHandler(async (event) => {
 
     // Reset tentativas em caso de sucesso
     loginAttempts.delete(clientIP)
+
+    // Criar notificação de login para o admin (apenas se não for admin)
+    if (funcionario.tipo_acesso !== 'admin') {
+      await notificarLogin(event, {
+        id: funcionario.id,
+        nome: funcionario.nome_completo,
+        email: funcionario.email_login,
+        tipo: funcionario.tipo_acesso
+      }, clientIP)
+    }
 
     // Retornar dados do usuário (sem a senha_hash)
     return {

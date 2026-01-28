@@ -1,4 +1,5 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
+import { notificarAlteracaoDados } from '../../utils/notifications'
 
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseServiceRole(event)
@@ -78,6 +79,15 @@ export default defineEventHandler(async (event) => {
     const funcionario = data as any
 
     console.log('✅ Funcionário atualizado:', funcionario?.id)
+
+    // Criar notificação para o admin sobre a alteração
+    const camposAlterados = Object.keys(dadosParaAtualizar)
+    if (camposAlterados.length > 0) {
+      await notificarAlteracaoDados(event, {
+        id: funcionario.id,
+        nome: funcionario.nome_completo || 'Funcionário'
+      }, camposAlterados, 'admin')
+    }
 
     return {
       success: true,

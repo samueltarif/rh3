@@ -1,4 +1,6 @@
 // API para atualizar dados do funcionário logado
+import { notificarAlteracaoDados } from '../../utils/notifications'
+
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const config = useRuntimeConfig()
@@ -111,6 +113,15 @@ export default defineEventHandler(async (event) => {
 
     const funcionarioAtualizado = await response.json()
     console.log('✅ Dados atualizados com sucesso!')
+
+    // Criar notificação para o admin sobre a alteração
+    const camposAlterados = Object.keys(camposPermitidos)
+    if (camposAlterados.length > 0) {
+      await notificarAlteracaoDados(event, {
+        id: userId,
+        nome: funcionarioAtualizado[0]?.nome_completo || 'Funcionário'
+      }, camposAlterados, 'proprio')
+    }
 
     return {
       success: true,

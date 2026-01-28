@@ -1,4 +1,5 @@
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { notificarCriacaoFuncionario } from '../../utils/notifications'
 
 export default defineEventHandler(async (event) => {
   // Usar Service Role para bypass RLS
@@ -119,6 +120,22 @@ export default defineEventHandler(async (event) => {
 
     console.log('✅ Funcionário criado:', (funcionario as any).id)
     console.log('👤 Cadastrado por:', responsavelCadastroId ? `ID ${responsavelCadastroId}` : 'Sistema')
+
+    // Criar notificação para o admin sobre novo funcionário
+    if (user?.email && responsavelCadastroId) {
+      const { data: responsavel } = await supabase
+        .from('funcionarios')
+        .select('id, nome_completo')
+        .eq('id', responsavelCadastroId)
+        .single()
+
+      if (responsavel) {
+        await notificarCriacaoFuncionario(event, funcionario, {
+          id: responsavel.id,
+          nome: responsavel.nome_completo
+        })
+      }
+    }
 
     return {
       success: true,
