@@ -14,8 +14,15 @@ export const useAuth = () => {
   const user = useState<User | null>('auth-user', () => {
     // Tentar recuperar do localStorage ao inicializar
     if (process.client) {
-      const stored = localStorage.getItem('auth-user')
-      return stored ? JSON.parse(stored) : null
+      try {
+        const stored = localStorage.getItem('auth-user')
+        const parsed = stored ? JSON.parse(stored) : null
+        console.log('🔐 [AUTH] Usuário recuperado do localStorage:', parsed?.nome || 'NENHUM')
+        return parsed
+      } catch (error) {
+        console.error('🔐 [AUTH] Erro ao recuperar usuário do localStorage:', error)
+        return null
+      }
     }
     return null
   })
@@ -25,23 +32,35 @@ export const useAuth = () => {
 
   const login = async (email: string, senha: string): Promise<{ success: boolean; message: string }> => {
     try {
+      console.log('🔐 [AUTH] Tentativa de login para:', email)
+      
       const response = await $fetch('/api/auth/login', {
         method: 'POST',
-        body: { email, senha }
+        body: { email, senha },
+        timeout: 30000 // 30 segundos para produção
       })
+
+      console.log('🔐 [AUTH] Resposta do login:', response.success ? 'SUCESSO' : 'FALHA')
 
       if (response.success && response.user) {
         user.value = response.user
+        console.log('🔐 [AUTH] Usuário logado:', response.user.nome, '- Tipo:', response.user.tipo)
+        
         // Salvar no localStorage
         if (process.client) {
-          localStorage.setItem('auth-user', JSON.stringify(response.user))
+          try {
+            localStorage.setItem('auth-user', JSON.stringify(response.user))
+            console.log('🔐 [AUTH] Usuário salvo no localStorage')
+          } catch (error) {
+            console.error('🔐 [AUTH] Erro ao salvar no localStorage:', error)
+          }
         }
         return { success: true, message: 'Login realizado com sucesso!' }
       }
 
       return { success: false, message: 'Email ou senha incorretos. Tente novamente.' }
     } catch (error: any) {
-      console.error('Erro no login:', error)
+      console.error('🔐 [AUTH] Erro no login:', error)
       return { 
         success: false, 
         message: error.data?.message || 'Email ou senha incorretos. Tente novamente.' 

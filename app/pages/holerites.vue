@@ -148,41 +148,66 @@ const tipoOptions = [
 // Buscar holerites reais do banco de dados
 const carregarHolerites = async () => {
   carregando.value = true
+  console.log('🔍 [HOLERITES-PAGE] Iniciando carregamento de holerites...')
+  
   try {
-    // Aguardar o user estar disponível
-    if (!user.value) {
+    // Aguardar o user estar disponível com timeout maior para produção
+    let tentativas = 0
+    while (!user.value && tentativas < 10) {
+      console.log(`🔍 [HOLERITES-PAGE] Aguardando usuário... tentativa ${tentativas + 1}`)
       await new Promise(resolve => setTimeout(resolve, 500))
-      if (!user.value) {
-        holerites.value = []
-        carregando.value = false
-        return
-      }
+      tentativas++
+    }
+    
+    if (!user.value) {
+      console.error('❌ [HOLERITES-PAGE] Usuário não disponível após 5 segundos')
+      holerites.value = []
+      carregando.value = false
+      return
     }
     
     // Pegar o ID do funcionário do usuário logado
     const funcionarioId = (user.value as any)?.id
+    console.log('👤 [HOLERITES-PAGE] ID do funcionário:', funcionarioId)
+    console.log('👤 [HOLERITES-PAGE] Dados do usuário:', JSON.stringify(user.value, null, 2))
     
     if (!funcionarioId) {
+      console.error('❌ [HOLERITES-PAGE] ID do funcionário não encontrado')
       holerites.value = []
       carregando.value = false
       return
     }
     
+    console.log('📡 [HOLERITES-PAGE] Fazendo requisição para API...')
     const data = await $fetch('/api/holerites/meus-holerites', {
-      query: { funcionarioId }
+      query: { funcionarioId },
+      retry: 3,
+      timeout: 30000 // 30 segundos timeout para produção
     })
+    
+    console.log('📊 [HOLERITES-PAGE] Resposta da API:', data)
+    
+    console.log('📊 [HOLERITES-PAGE] Resposta da API:', data)
+    console.log('📊 [HOLERITES-PAGE] Tipo da resposta:', typeof data)
+    console.log('📊 [HOLERITES-PAGE] É array?', Array.isArray(data))
     
     // Verificar se data é um array válido
     if (!Array.isArray(data)) {
+      console.error('❌ [HOLERITES-PAGE] Resposta não é um array:', data)
       holerites.value = []
       carregando.value = false
       return
     }
     
+    console.log(`✅ [HOLERITES-PAGE] ${data.length} holerite(s) encontrado(s)`)
+    
     // Formatar holerites para o formato esperado pelo componente
     holerites.value = (data as any[]).map((h, index) => {
+      console.log(`🔄 [HOLERITES-PAGE] Processando holerite ${index + 1}:`, h)
+      
       // Verificar se h é um objeto válido
       if (!h || typeof h !== 'object') {
+        console.error(`❌ [HOLERITES-PAGE] Holerite ${index + 1} inválido:`, h)
         return null
       }
       
@@ -251,15 +276,22 @@ const carregarHolerites = async () => {
         observacoes: h.observacoes || ''
       }
       
+      console.log(`✅ [HOLERITES-PAGE] Holerite ${index + 1} formatado:`, holeriteFormatado)
       return holeriteFormatado
     }).filter(h => h !== null) // Remover holerites inválidos
     
+    console.log(`🎯 [HOLERITES-PAGE] Total de holerites válidos: ${holerites.value.length}`)
+    
   } catch (error) {
-    console.error('Erro ao carregar holerites:', error)
+    console.error('💥 [HOLERITES-PAGE] Erro ao carregar holerites:', error)
+    console.error('💥 [HOLERITES-PAGE] Stack trace:', error.stack)
+    console.error('💥 [HOLERITES-PAGE] Detalhes do erro:', JSON.stringify(error, null, 2))
+    
     // Se não houver holerites, manter array vazio
     holerites.value = []
   } finally {
     carregando.value = false
+    console.log('🏁 [HOLERITES-PAGE] Carregamento finalizado')
   }
 }
 
